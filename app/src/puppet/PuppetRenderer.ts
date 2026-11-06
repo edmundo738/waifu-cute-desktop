@@ -45,8 +45,14 @@ export class PuppetRenderer implements CompanionRenderer {
   private torsoNow = 0;
   private armsNow: { L: ArmPose; R: ArmPose } = { L: { ...ARM_REST }, R: { ...ARM_REST } };
   private armTest = false;
-  /** ?perf=1 — console-only frame timing (the node selftest is a software-raster proxy) */
+  /** frame timing, always collected (2 perf.now() per frame); shown in the UI status,
+   *  logged to the console with ?perf=1. The node selftest is only a software proxy. */
   private perf = { on: false, drawMs: 0, frames: 0, since: 0 };
+  private perfLast: { drawMs: number; fps: number; w: number; h: number } | null = null;
+  /** rig in use: "v05" flat body (default) or "v06" skinned skeleton (?rig=v06) */
+  public rigMode: "v05" | "v06" = "v05";
+  public get armTestOn(): boolean { return this.armTest; }
+  public getPerf(): { drawMs: number; fps: number; w: number; h: number } | null { return this.perfLast; }
   private lastPointer = -10;
   private faceFollow = false;
   private external = { x: 0, y: 0 };
@@ -115,6 +121,7 @@ export class PuppetRenderer implements CompanionRenderer {
     }
     this.armTest = useV06 && new URLSearchParams(window.location.search).get("armtest") === "1";
     this.perf.on = new URLSearchParams(window.location.search).get("perf") === "1";
+    this.rigMode = useV06 ? "v06" : "v05";
     // one-off RGBA readback so the mesh builder can skip empty cells
     const alphaOf = (img?: HTMLImageElement): AlphaMap | undefined => {
       if (!img) return undefined;
@@ -227,20 +234,17 @@ export class PuppetRenderer implements CompanionRenderer {
     this.last = now;
     this.t += dt;
     this.step(dt);
-    if (this.perf.on) {
-      const t0 = performance.now();
-      this.draw();
-      const p = this.perf;
-      p.drawMs += performance.now() - t0;
-      p.frames++;
-      if (p.since === 0) p.since = now;
-      if (now - p.since >= 2000) {
-        // draw = CPU time issuing canvas commands; fps = real presentation rate
-        console.info(`[perf] draw ${(p.drawMs / p.frames).toFixed(2)} ms/frame (CPU), ${(p.frames * 1000 / (now - p.since)).toFixed(1)} fps, canvas ${this.canvas.width}x${this.canvas.height}`);
-        p.drawMs = 0; p.frames = 0; p.since = now;
-      }
-    } else {
-      this.draw();
+    const t0 = performance.now();
+    this.draw();
+    const p = this.perf;
+    p.drawMs += performance.now() - t0;
+    p.frames++;
+    if (p.since === 0) p.since = now;
+    if (now - p.since >= 2000) {
+      // draw = CPU time issuing canvas commands; fps = real presentation rate
+      this.perfLast = { drawMs: p.drawMs / p.frames, fps: (p.frames * 1000) / (now - p.since), w: this.canvas.width, h: this.canvas.height };
+      if (p.on) console.info(`[perf] draw ${this.perfLast.drawMs.toFixed(2)} ms/frame (CPU), ${this.perfLast.fps.toFixed(1)} fps, canvas ${this.canvas.width}x${this.canvas.height}`);
+      p.drawMs = 0; p.frames = 0; p.since = now;
     }
     this.raf = requestAnimationFrame(this.loop);
   };
@@ -345,6 +349,31 @@ export class PuppetRenderer implements CompanionRenderer {
       torsoRot: this.torsoNow,
       arms: this.armsNow,
     }, view, { w: canvas.width, h: canvas.height });
+    if (this.armTest) this.drawArmTestLabel();
+  }
+
+  /** ?armtest=1: which joint the showcase is exercising right now */
+  private drawArmTestLabel(): void {
+    const { ctx, canvas } = this;
+    const seg = Math.floor(this.t / 4) % 6;
+    const names = [
+      "ombro: abdução 0→14°", "cotovelo: 0→40°", "pulso: ±25°",
+      "clavícula: encolher 0→5°", "IK: mãos seguem um alvo circular", "combinado: todas as articulações",
+    ];
+    const fs = Math.max(12, Math.round(canvas.height * 0.022));
+    const text = `teste de braços ${seg + 1}/6 · ${names[seg]}`;
+    ctx.save();
+    ctx.font = `600 ${fs}px system-ui, sans-serif`;
+    const w = ctx.measureText(text).width;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(fs * 0.6, fs * 0.6, w + fs * 1.2, fs * 1.8);
+    ctx.fillStyle = "#f5c86a";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, fs * 1.2, fs * 1.5);
+    // progress of the current 4 s segment
+    ctx.fillStyle = "rgba(245,200,106,0.8)";
+    ctx.fillRect(fs * 0.6, fs * 2.4, (w + fs * 1.2) * ((this.t % 4) / 4), Math.max(2, fs * 0.15));
+    ctx.restore();
   }
 
   /**

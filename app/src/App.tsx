@@ -58,6 +58,9 @@ export default function App() {
   const [rendererKind, setRendererKind] = useState<"loading" | "static" | "live2d" | "puppet">("loading");
   const [modelFound, setModelFound] = useState<boolean | null>(null);
   const [rigFound, setRigFound] = useState<boolean | null>(null);
+  const urlQ = new URLSearchParams(window.location.search);
+  const rigMode: "v05" | "v06" | "v06arm" = urlQ.get("rig") === "v06" ? (urlQ.get("armtest") === "1" ? "v06arm" : "v06") : "v05";
+  const [perf, setPerf] = useState<{ drawMs: number; fps: number; w: number; h: number } | null>(null);
   const [pose, setPose] = useState<PoseName>("neutral");
   const [log, setLog] = useState<string[]>([]);
   const [faceOn, setFaceOn] = useState(false);
@@ -140,9 +143,13 @@ export default function App() {
       }
     });
     const offPointer = subscribePointer((x, y) => renderer?.setGaze(x, y));
+    const perfTimer = window.setInterval(() => {
+      if (rendererRef.current instanceof PuppetRenderer) setPerf(rendererRef.current.getPerf());
+    }, 2000);
 
     return () => {
       disposed = true;
+      window.clearInterval(perfTimer);
       offTriggers();
       offPointer();
       followerRef.current?.stop();
@@ -223,7 +230,9 @@ export default function App() {
     <>
       <header>
         <h1>WAIFU CUTE DESKTOP</h1>
-        <span className="tag">companion stage · component puppet v0.3</span>
+        <span className="tag">
+          companion stage · {rigMode === "v05" ? "rig v0.5 (corpo fixo)" : `rig v0.6 · esqueleto (etapas 1–2)${rigMode === "v06arm" ? " · teste de braços" : ""}`}
+        </span>
       </header>
 
       <div className="banner">
@@ -236,6 +245,13 @@ export default function App() {
             (key <b>Y</b> or the Talk button, and chat replies): jaw drop + clipped oral cavity
             + gradual teeth/tongue + vowel shapes. Webcam face-follow and the local-LLM brain
             hook (LM Studio) are on-device and optional. This is <b>not</b> Live2D/Inochi2D.
+            {rigMode !== "v05" && (
+              <>
+                {" "}<b>Rig v0.6 activo:</b> corpo contínuo com esqueleto invisível — tronco, pescoço,
+                cabeça e clavícula→braço→antebraço→mão (L/R), com IK. Cabelo em 3 planos, roupa com
+                física e poses de trigger são as próximas etapas.
+              </>
+            )}
           </>
         ) : (
           <>static-sprite placeholder (transform-only idle). Not a rig.</>
@@ -249,6 +265,25 @@ export default function App() {
         </section>
 
         <aside className="panel">
+          <h2>Rig (esqueleto)</h2>
+          <div className="row">
+            {([
+              ["v05", "v0.5 · corpo fixo", ""],
+              ["v06", "v0.6 · esqueleto", "?rig=v06"],
+              ["v06arm", "v0.6 · teste de braços", "?rig=v06&armtest=1"],
+            ] as const).map(([id, label, q]) => (
+              <button
+                key={id}
+                className={id === "v05" ? undefined : "primary"}
+                onClick={() => { if (id !== rigMode) window.location.search = q; }}
+                style={rigMode === id ? { borderColor: "var(--gold)", color: "var(--gold)" } : undefined}
+                title={id === "v06arm" ? "cicla ombro, cotovelo, pulso, clavícula, IK e combinado (4 s cada)" : undefined}
+              >
+                {rigMode === id ? "● " : ""}{label}
+              </button>
+            ))}
+          </div>
+
           <h2>Next-level inputs</h2>
           <div className="row">
             <button className="primary" onClick={() => void toggleFace()} style={faceOn ? { borderColor: "var(--ok)", color: "var(--ok)" } : undefined}>
@@ -338,6 +373,16 @@ export default function App() {
             </div>
             <div>
               pose: <span className="k">{pose}</span>
+            </div>
+            <div>
+              frame (este browser):{" "}
+              {perf ? (
+                <span className={perf.drawMs <= 16 ? "ok" : "warn"}>
+                  {perf.drawMs.toFixed(1)} ms desenho · {perf.fps.toFixed(0)} fps · canvas {perf.w}×{perf.h}
+                </span>
+              ) : (
+                <span className="k">a medir…</span>
+              )}
             </div>
           </div>
 
