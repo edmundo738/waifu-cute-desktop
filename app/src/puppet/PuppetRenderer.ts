@@ -1,5 +1,8 @@
 import { CompanionRenderer, PoseName, SPRITE_URL } from "../companion/types";
 import { RigManifest, RigAssets, computeView, renderPuppetFrame } from "./puppetRender";
+import type { AlphaMap } from "./mesh/meshRender";
+import { ARM_REST, type ArmPose } from "./mesh/rigWeights";
+import { solveArmIK } from "./mesh/armIK";
 import { headTarget, smoothDamp, idleGaze, blinkValue, pointerToGaze, SecondaryMotion, clamp } from "./puppetMath";
 import { JawController } from "./mouth/jawController";
 import { loadMouthAssets } from "./mouth/mouthLayers";
@@ -40,6 +43,10 @@ export class PuppetRenderer implements CompanionRenderer {
   private blink = 0;
   private breath = 0;
   private torsoNow = 0;
+  private armsNow: { L: ArmPose; R: ArmPose } = { L: { ...ARM_REST }, R: { ...ARM_REST } };
+  private armTest = false;
+  /** ?perf=1 — console-only frame timing (the node selftest is a software-raster proxy) */
+  private perf = { on: false, drawMs: 0, frames: 0, since: 0 };
   private lastPointer = -10;
   private faceFollow = false;
   private external = { x: 0, y: 0 };
@@ -97,13 +104,37 @@ export class PuppetRenderer implements CompanionRenderer {
     // v0.6 stage-1 rig (continuous skinned sheet) behind ?rig=v06 until parity proven
     const useV06 = new URLSearchParams(window.location.search).get("rig") === "v06";
     let sheet: HTMLImageElement | undefined, lower: HTMLImageElement | undefined;
+    let armL: HTMLImageElement | undefined, armR: HTMLImageElement | undefined;
+    let panelL: HTMLImageElement | undefined, panelR: HTMLImageElement | undefined;
     if (useV06) {
-      [sheet, lower] = await Promise.all([load("/rig/body_sheet.png"), load("/rig/body_lower.png")]);
+      [sheet, lower, armL, armR, panelL, panelR] = await Promise.all([
+        load("/rig/body_sheet.png"), load("/rig/body_lower.png"),
+        load("/rig/arm_L.png"), load("/rig/arm_R.png"),
+        load("/rig/panel_L.png"), load("/rig/panel_R.png"),
+      ]);
     }
+    this.armTest = useV06 && new URLSearchParams(window.location.search).get("armtest") === "1";
+    this.perf.on = new URLSearchParams(window.location.search).get("perf") === "1";
+    // one-off RGBA readback so the mesh builder can skip empty cells
+    const alphaOf = (img?: HTMLImageElement): AlphaMap | undefined => {
+      if (!img) return undefined;
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      const cx = c.getContext("2d");
+      if (!cx) return undefined;
+      cx.drawImage(img, 0, 0);
+      return { data: cx.getImageData(0, 0, img.width, img.height).data, w: img.width, h: img.height };
+    };
     this.assets = {
       body, bodyW: body.width, bodyH: body.height, neck, headBase,
       sheet, sheetW: sheet?.width, sheetH: sheet?.height,
       lower, lowerW: lower?.width, lowerH: lower?.height,
+      arm: armL && armR ? { L: armL, R: armR } : undefined,
+      panel: panelL && panelR ? { L: panelL, R: panelR } : undefined,
+      makeCanvas: (w: number, h: number) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; },
+      alpha: useV06 ? {
+        sheet: alphaOf(sheet), armL: alphaOf(armL), armR: alphaOf(armR), panelL: alphaOf(panelL), panelR: alphaOf(panelR),
+      } : undefined,
       iris: { L: irisL, R: irisR }, lid: { L: lidL, R: lidR }, brow: { L: browL, R: browR },
       mouth,
       hair: { puff: hairPuff, tL: hairTL, tR: hairTR },
@@ -196,7 +227,21 @@ export class PuppetRenderer implements CompanionRenderer {
     this.last = now;
     this.t += dt;
     this.step(dt);
-    this.draw();
+    if (this.perf.on) {
+      const t0 = performance.now();
+      this.draw();
+      const p = this.perf;
+      p.drawMs += performance.now() - t0;
+      p.frames++;
+      if (p.since === 0) p.since = now;
+      if (now - p.since >= 2000) {
+        // draw = CPU time issuing canvas commands; fps = real presentation rate
+        console.info(`[perf] draw ${(p.drawMs / p.frames).toFixed(2)} ms/frame (CPU), ${(p.frames * 1000 / (now - p.since)).toFixed(1)} fps, canvas ${this.canvas.width}x${this.canvas.height}`);
+        p.drawMs = 0; p.frames = 0; p.since = now;
+      }
+    } else {
+      this.draw();
+    }
     this.raf = requestAnimationFrame(this.loop);
   };
 
@@ -252,6 +297,13 @@ export class PuppetRenderer implements CompanionRenderer {
     // v0.6: subtle continuous upper-body lean (the skinned sheet deforms it;
     // sprite-seam v0.5 rig ignores torsoRot entirely)
     this.torsoNow = 0.9 * Math.sin(this.t * 0.45);
+    this.armsNow = this.armTest ? this.armTestPose(this.t) : {
+      // idle life: slow, small, out of phase L/R (arms hang naturally; v06 only)
+      L: { shrug: 0.4 * Math.sin(this.t * 0.45 + 0.3), shoulder: 1.2 + 0.8 * Math.sin(this.t * 0.5),
+        elbow: 3 + 2 * Math.sin(this.t * 0.6 + 1.1), wrist: 2 * Math.sin(this.t * 0.8 + 0.4) },
+      R: { shrug: 0.4 * Math.sin(this.t * 0.45 + 1.9), shoulder: 1.2 + 0.8 * Math.sin(this.t * 0.5 + 2.2),
+        elbow: 3 + 2 * Math.sin(this.t * 0.6 + 2.9), wrist: 2 * Math.sin(this.t * 0.8 + 2.0) },
+    };
 
     // blink scheduler (ANIMATION_SPEC #2 intervals)
     if (this.blinkStart < 0 && this.t > this.nextBlink) this.blinkStart = this.t;
@@ -291,6 +343,35 @@ export class PuppetRenderer implements CompanionRenderer {
       smile: this.smile,
       hair: this.hairNow,
       torsoRot: this.torsoNow,
+      arms: this.armsNow,
     }, view, { w: canvas.width, h: canvas.height });
+  }
+
+  /**
+   * ?rig=v06&armtest=1 — articulation showcase cycling 6 segments of 4 s:
+   * shoulders, elbows, wrists, shrug, IK hand-to-hip circle, combined.
+   */
+  private armTestPose(t: number): { L: ArmPose; R: ArmPose } {
+    const seg = Math.floor(t / 4) % 6;
+    const w = Math.sin(((t % 4) / 4) * Math.PI * 2);   // -1..1..-1 per segment
+    const up = 0.5 - 0.5 * Math.cos(((t % 4) / 4) * Math.PI * 2); // 0..1..0
+    const r = { ...ARM_REST };
+    switch (seg) {
+      case 0: return { L: { ...r, shoulder: 14 * up }, R: { ...r, shoulder: 14 * up } };
+      case 1: return { L: { ...r, elbow: 40 * up }, R: { ...r, elbow: 40 * up } };
+      case 2: return { L: { ...r, wrist: 25 * w }, R: { ...r, wrist: -25 * w } };
+      case 3: return { L: { ...r, shrug: 5 * up }, R: { ...r, shrug: 5 * up } };
+      case 4: {
+        const a = (t % 4) / 4 * Math.PI * 2;
+        const rig = this.man.rigv06!;
+        const L = solveArmIK(rig, "L", [530 + 14 * Math.cos(a), 420 + 14 * Math.sin(a)]).pose;
+        const R = solveArmIK(rig, "R", [730 - 14 * Math.cos(a), 420 + 14 * Math.sin(a)]).pose;
+        return { L, R };
+      }
+      default: return {
+        L: { shrug: 3 * up, shoulder: 10 * up, elbow: 30 * up, wrist: 15 * w },
+        R: { shrug: 2 * up, shoulder: 6 * up, elbow: 45 * up, wrist: -15 * w },
+      };
+    }
   }
 }

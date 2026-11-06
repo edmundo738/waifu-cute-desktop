@@ -44,11 +44,27 @@ coordinates in `app/public/rig/manifest.json` (pose pixel space, 1264×843).
 Not separated (documented, not faked): earrings (gold-on-skin ghost risk), forehead
 wisps, back hair mass (not visible in front view).
 
+## v0.6 skinned rig layers (`?rig=v06`, stages 1–2, verified by `npm run test:puppet`)
+
+Draw order (back → front), all inside the breathe wrapper except the backdrop:
+
+| # | Layer | Asset | Bones / skinning | Notes |
+|---|---|---|---|---|
+| 1 | base below the waist | `rig/body_lower.png` | Root (rigid) | includes hidden hip/torso art under the arms |
+| 2 | continuous head+neck+torso | `rig/body_sheet.png` | Root→Torso→Neck→Head, blend bands | ONE texture; hidden neck/skull-base art (stage 1) and armpit/side art (stage 2) |
+| 3 | jacket front panel L / R | `rig/panel_L.png`, `rig/panel_R.png` | Clavicle→UpperArm (weld ramp), rigid with the upper arm | own depth plane BEHIND the sleeve; hidden jacket side ≤ 28 px under the sleeve, opaque, 1 px AA edge |
+| 4 | sleeve + hand L / R | `rig/arm_L.png`, `rig/arm_R.png` | Clavicle→UpperArm→Forearm→Hand, angular elbow/wrist cones | matted medial strip, edge-decontaminated silhouette |
+| 5 | head group | `head_base_nm`, iris/lid/brow L/R, mouth, hair overlays | Head bone (world matrix) | unchanged v0.5 components; locked to the skinned head (0.0000 px) |
+
+Rendering: layers with blended triangles (2, 4) are drawn on an isolated offscreen surface
+with additive accumulation of exact clips, then composited once (no seams, no double alpha);
+panels (3) have no blended triangles and blit per rigid run.
+
 ## Missing components (must be authored/cut later — NOT faked)
 
 - Lower-lid independent layer (currently part of face base)
 - Mouth: corner asymmetry / smile curls, lip texture at large openings (procedural lips are minimal by design); viseme art sheets remain reference only
 - Hair sub-groups (puff crown, side tendrils, back mass) for secondary motion
-- Arm chains (upper/fore/hand) and torso split for gesture rigging
+- ~~Arm chains (upper/fore/hand) and torso split~~ → done in v0.6 stages 1–2 (see above); hair 3 depth planes = stage 3; clothes/accessories skinned = stage 4
 - Eye highlights as separate layer (currently baked into iris sprite)
 - Sclera as separate backing layer (currently painted into head_base openings)

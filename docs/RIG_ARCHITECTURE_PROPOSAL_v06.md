@@ -1,7 +1,10 @@
 # v0.6 — Diagnóstico e Proposta de Arquitectura: Rig 2D em Camadas com Mesh + Ossos
 
-Estado: **ETAPA 1 IMPLEMENTADA E TESTADA** (auto-rig v06 atrás de `?rig=v06`;
-v0.5 continua default até paridade em uso vivo). Etapas 2-5 aguardam sequência.
+Estado: **ETAPAS 1 E 2 IMPLEMENTADAS E TESTADAS** (auto-rig v06 atrás de `?rig=v06`;
+v0.5 continua default até paridade em uso vivo). Etapa 2 = braços/mãos
+(Clavícula→Braço→Antebraço→Mão L/R, arte oculta das axilas/lados do casaco, corrector do
+cotovelo, IK de 2 ossos; `app/test_out/stage2_*.png`, secção v0.6 Stage 2 do relatório).
+Etapas 3-5 aguardam sequência (3 = cabelo em 3 planos).
 Este documento cumpre a regra do mandato v0.6: *antes de alterar a arquitectura,
 apresentar diagnóstico + proposta + plano de migração*. A implementação da Etapa 1
 segue exactamente o §3/§5: `tools/prep_stage1_sheet.py` (base anatómica contínua +

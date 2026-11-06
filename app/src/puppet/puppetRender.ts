@@ -13,7 +13,8 @@ import { Vec2, gazeOffset, headTarget, lidBottomY, browOffset, clamp, RigLimits 
 import type { MouthAnchors, MouthGeom } from "./mouth/mouthMath";
 import type { MouthAssets } from "./mouth/mouthLayers";
 import { drawMouth } from "./mouth/MouthRenderer";
-import { buildSkinMesh, drawSkinnedSheet, rotMat, mulMat, ID_MAT, Mat, SkinMesh } from "./mesh/meshRender";
+import { buildSkinMesh, drawSkinMesh, attachSolid, attachSurface, solveSkeleton, type SkinMesh, type AlphaMap, type BoneDef, type Mat } from "./mesh/meshRender";
+import { BN, skeletonDefs, sheetWeights, armWeights, panelWeights, buildPoses, type ArmPose } from "./mesh/rigWeights";
 
 /**
  * Structural 2D context: satisfied by both the browser CanvasRenderingContext2D and
@@ -43,10 +44,15 @@ export interface Ctx2D {
   ellipse(x: number, y: number, rx: number, ry: number, rot: number, sa: number, ea: number, ccw?: boolean): void;
   transform(a: number, b: number, c: number, d: number, e: number, f: number): void;
   clip(): void;
+  rect(x: number, y: number, w: number, h: number): void;
   stroke(): void;
   fill(): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   drawImage(img: any, ...args: number[]): void;
+  /** optional (present on real 2D contexts): isolated conflation-free mesh layers */
+  getTransform?(): { a: number; b: number; c: number; d: number; e: number; f: number };
+  setTransform?(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  globalCompositeOperation?: string;
 }
 
 export interface EyeRig {
@@ -71,6 +77,30 @@ export interface RigV06 {
   step: number;
   bones: { root: [number, number]; torso: [number, number]; neck: [number, number]; head: [number, number] };
   neck_comp: number;
+  /** v0.6 stage 2: arm chains (measured boundaries, pivots, bands, limits) */
+  arms?: ArmsRig;
+  /** v0.6 stage 2: clavicle influence painted on the sheet's shoulders */
+  clav_sheet?: { neck_edge: { L: number; R: number }; neck_cols: [number, number, number, number]; row_gate: [number, number]; fall: [number, number] };
+}
+
+export interface ArmSideRig {
+  box: [number, number, number, number];
+  boundary: number[][];
+  weld: number[][];
+  pivots: { clav: [number, number]; shoulder: [number, number]; elbow: [number, number]; wrist: [number, number] };
+  side: number;
+  /** jacket front panel (depth layer behind the sleeve; follows clavicle/UpperArm, not the forearm) */
+  panel_box: [number, number, number, number];
+  panel_poly: number[][];
+}
+
+export interface ArmsRig {
+  L: ArmSideRig; R: ArmSideRig;
+  feather: number; upper_ramp: number;
+  /** angular weight width about elbow / wrist pivots (fold-free while θ < w/0.75 rad) */
+  elbow_cone_w: number; wrist_cone_w: number;
+  limits: { shrug: [number, number]; shoulder: [number, number]; elbow: [number, number]; wrist: [number, number] };
+  hidden: { mirror_px: number; lining_px: number; lining_rgb: number[] };
 }
 
 export interface RigManifest {
@@ -92,6 +122,17 @@ export interface RigAssets {
   sheet?: CanvasImageSource; sheetW?: number; sheetH?: number;
   lower?: CanvasImageSource; lowerW?: number; lowerH?: number;
   mesh?: SkinMesh;
+  /** v0.6 stage 2: arm layers (deltoid→fingertips, one continuous mesh each) */
+  arm?: { L: CanvasImageSource; R: CanvasImageSource };
+  armMesh?: { L?: SkinMesh; R?: SkinMesh };
+  /** v0.6 stage 2: jacket front panels, drawn behind the sleeves */
+  panel?: { L: CanvasImageSource; R: CanvasImageSource };
+  panelMesh?: { L?: SkinMesh; R?: SkinMesh };
+  /** RGBA texture data used once at mesh build to skip empty cells */
+  alpha?: { sheet?: AlphaMap; armL?: AlphaMap; armR?: AlphaMap; panelL?: AlphaMap; panelR?: AlphaMap };
+  /** canvas factory (browser: createElement, node: createCanvas) for seam-fill solid textures */
+  makeCanvas?: (w: number, h: number) => unknown;
+  skelDefs?: BoneDef[];
   iris: { L: CanvasImageSource; R: CanvasImageSource };
   lid: { L: CanvasImageSource; R: CanvasImageSource };
   brow: { L: CanvasImageSource; R: CanvasImageSource };
@@ -112,6 +153,7 @@ export interface PuppetParams {
   smile: number;         // -1..1 expression: corner lift + lid squint
   hair: { puff: Vec2; tL: Vec2; tR: Vec2 } | null; // secondary-motion offsets
   torsoRot?: number;     // v0.6: upper-body lean in deg about the waist pivot
+  arms?: { L?: ArmPose; R?: ArmPose }; // v0.6 stage 2: user-facing arm angles (deg)
 }
 
 export interface View { scale: number; ox: number; oy: number }
@@ -151,6 +193,7 @@ export function renderPuppetFrame(
   const v06 = !!(assets.sheet && assets.lower && man.rigv06);
   const tRot = p.torsoRot ?? 0;
   const comp = man.rigv06?.neck_comp ?? 0.35;
+  let headWorld: Mat | null = null;
   ctx.save();
   ctx.translate(S(630), T(842));
   ctx.scale(breathe, breathe);
@@ -158,15 +201,53 @@ export function renderPuppetFrame(
   if (v06 && man.rigv06) {
     // continuous anatomical sheet, skinned by the bone chain (no sprite seams)
     ctx.drawImage(assets.lower!, S(0), T(0), assets.lowerW! * k, assets.lowerH! * k);
-    const bn = man.rigv06.bones;
-    const mT = rotMat(bn.torso[0], bn.torso[1], tRot);
-    const mN = mulMat(mT, rotMat(bn.neck[0], bn.neck[1], comp * p.headRot));
-    const mH = mulMat(mN, mulMat(rotMat(bn.head[0], bn.head[1], (1 - comp) * p.headRot),
-      [1, 0, 0, 1, p.headDx, p.headDy + breathDy]));
-    const mats: Mat[] = [ID_MAT, mT, mN, mH];
-    if (!assets.mesh) assets.mesh = buildSkinMesh(assets.sheetW!, assets.sheetH!, man.rigv06.step);
-    drawSkinnedSheet(ctx, { img: assets.sheet, w: assets.sheetW!, h: assets.sheetH! },
-      assets.mesh, mats, view, [man.rigv06.sheet_box[0], man.rigv06.sheet_box[1]]);
+    const rig = man.rigv06;
+    const defs = assets.skelDefs ?? (assets.skelDefs = skeletonDefs(rig));
+    const sk = solveSkeleton(defs, buildPoses(rig, {
+      torsoRot: tRot, headRot: p.headRot, headDx: p.headDx, headDy: p.headDy + breathDy,
+      neckComp: comp, arms: p.arms,
+    }));
+    if (!assets.mesh) {
+      assets.mesh = buildSkinMesh(assets.sheetW!, assets.sheetH!, rig.step,
+        [rig.sheet_box[0], rig.sheet_box[1]], sheetWeights(rig), defs, assets.alpha?.sheet ?? null);
+      if (assets.makeCanvas && assets.alpha?.sheet) attachSolid(assets.mesh, assets.alpha.sheet, assets.makeCanvas);
+      if (assets.makeCanvas) attachSurface(assets.mesh, assets.makeCanvas);
+    }
+    drawSkinMesh(ctx, { img: assets.sheet }, assets.mesh, sk, view);
+    if (rig.arms && assets.panel) {
+      // depth order: panels behind, sleeves (and hands) in front
+      assets.panelMesh ??= {};
+      for (const sd of ["L", "R"] as const) {
+        const bx = rig.arms[sd].panel_box;
+        let m = assets.panelMesh[sd];
+        if (!m) {
+          m = buildSkinMesh(bx[2] - bx[0], bx[3] - bx[1], rig.step, [bx[0], bx[1]], panelWeights(rig, sd), defs,
+            (sd === "L" ? assets.alpha?.panelL : assets.alpha?.panelR) ?? null);
+          const pa = sd === "L" ? assets.alpha?.panelL : assets.alpha?.panelR;
+          if (assets.makeCanvas && pa) attachSolid(m, pa, assets.makeCanvas);
+          if (assets.makeCanvas) attachSurface(m, assets.makeCanvas);
+          assets.panelMesh[sd] = m;
+        }
+        drawSkinMesh(ctx, { img: assets.panel[sd] }, m, sk, view);
+      }
+    }
+    if (rig.arms && assets.arm) {
+      assets.armMesh ??= {};
+      for (const sd of ["L", "R"] as const) {
+        const bx = rig.arms[sd].box;
+        let m = assets.armMesh[sd];
+        if (!m) {
+          m = buildSkinMesh(bx[2] - bx[0], bx[3] - bx[1], rig.step, [bx[0], bx[1]], armWeights(rig, sd), defs,
+            (sd === "L" ? assets.alpha?.armL : assets.alpha?.armR) ?? null);
+          const aa = sd === "L" ? assets.alpha?.armL : assets.alpha?.armR;
+          if (assets.makeCanvas && aa) attachSolid(m, aa, assets.makeCanvas);
+          if (assets.makeCanvas) attachSurface(m, assets.makeCanvas);
+          assets.armMesh[sd] = m;
+        }
+        drawSkinMesh(ctx, { img: assets.arm[sd] }, m, sk, view);
+      }
+    }
+    headWorld = sk.world[BN.head];
   } else {
     ctx.drawImage(assets.body, S(0), T(0), assets.bodyW * k, assets.bodyH * k);
     ctx.drawImage(assets.neck, S(man.neck_box[0]), T(man.neck_box[1]),
@@ -177,13 +258,13 @@ export function renderPuppetFrame(
   // ---- head group ----
   const [px, py] = man.neck_pivot;
   ctx.save();
-  if (v06 && man.rigv06) {
-    // overlay transform = Head bone global matrix (matches the skinned mesh head)
-    const bn = man.rigv06.bones;
-    ctx.translate(S(bn.torso[0]), T(bn.torso[1])); ctx.rotate(tRot * deg); ctx.translate(-S(bn.torso[0]), -T(bn.torso[1]));
-    ctx.translate(S(bn.neck[0]), T(bn.neck[1])); ctx.rotate(comp * p.headRot * deg); ctx.translate(-S(bn.neck[0]), -T(bn.neck[1]));
-    ctx.translate(S(bn.head[0]), T(bn.head[1])); ctx.rotate((1 - comp) * p.headRot * deg); ctx.translate(-S(bn.head[0]), -T(bn.head[1]));
-    ctx.translate(p.headDx * k, (p.headDy + breathDy) * k);
+  if (v06 && headWorld) {
+    // overlays share the mesh's exact transform stack: breathe wrapper ∘ V ∘ M_head ∘ V⁻¹
+    ctx.translate(S(630), T(842));
+    ctx.scale(breathe, breathe);
+    ctx.translate(-S(630), -T(842));
+    const m = headWorld;
+    ctx.transform(m[0], m[1], m[2], m[3], ox - (m[0] * ox + m[2] * oy) + k * m[4], oy - (m[1] * ox + m[3] * oy) + k * m[5]);
   } else {
     ctx.translate(S(px) + p.headDx * k, T(py) + (p.headDy + breathDy) * k);
     ctx.rotate(p.headRot * deg);

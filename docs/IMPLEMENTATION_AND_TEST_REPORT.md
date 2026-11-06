@@ -123,6 +123,8 @@ renderer remains the default until parity is proven in live use).
   stays connected on every row (0 empty rows); head-block centroid moves 14.5
   pose px at 8° tilt (deformation is real, not a no-op); posed skinned frame
   7.8 ms mean in node-canvas software raster (rigid spans + band tris only).
+  *Corrected in Stage 2: that figure timed command recording (deferred raster);
+  with forced rasterisation the Stage-1 frame costs 20.7 ms — see below.*
 - **Evidence**: `app/test_out/stage1_poses.png` (rest | lean 6° | tilt 8° |
   combined with gaze+smile+open mouth, dark stage) — head/neck/torso read as one
   continuous body in every panel.
@@ -130,6 +132,99 @@ renderer remains the default until parity is proven in live use).
   band shows a soft wobble under torso lean (arms get their own bones in stage
   2, which removes it); eye-socket feather ring exists since v0.4 and is used
   as the holes baseline.
+
+## v0.6 Stage 2 — arms/hands: Clavicle→UpperArm→Forearm→Hand L/R (IMPLEMENTED, TESTED)
+User GO after Stage 1. Still behind `?rig=v06` (`?rig=v06&armtest=1` = articulation
+showcase, 6 segments × 4 s; `?perf=1` = console frame timing in the browser).
+- **Skeleton** (12 bones): Root→Torso→Neck→Head + per side Clavicle→UpperArm→Forearm→Hand,
+  pivots in pose px (`manifest.json → rigv06.arms`). Limits enforced by `clampArm`:
+  shrug −2…6°, shoulder −4…18°, elbow −5…60°, wrist −30…30°.
+- **Stage-1 bug fixed first (breathing)**: eye/mouth/hair overlays were drawn outside the
+  breathe wrapper while the head mesh breathed (≈5.7 px slide at the breath peak). The head
+  group now renders inside the wrapper. MEASURED: iris↔head-mesh mismatch 0.0000 px at
+  breath phase 0 and at the peak.
+- **Prep** `tools/prep_stage2_arms.py` (deterministic, reruns from the canon art):
+  - arm layers cut at the shoulder welds; the jacket/skin medial strip is MATTED
+    (F = (C−(1−J)B)/J, J ≥ jmin), not binary-inset (a 3 px binary inset left a jagged edge
+    and skin flecks — failed experiment); mirror fill only 3 px (`D_MIRROR`; 9 px made a
+    waist step — failed experiment);
+  - **edge decontamination**: every semi-transparent silhouette px gets propagated interior
+    colour, α untouched (a white bead outline survived two narrower defringe attempts);
+  - **depth split panel | sleeve**: the jacket front panel is its own layer BEHIND the
+    sleeve. One continuous sleeve+panel mesh produced a fan/comb at elbow 60° — topology,
+    not weights (weight-only fixes were rejected after analysis);
+  - **hidden art**: torso/hip under the arms (`body_lower`, `body_sheet`) and the jacket side
+    continued ≤ 28 px under the sleeve (panel extension, distance-shaded). Rule learned:
+    the back layer extends ≥ 3 px under the front layer on every shared boundary, otherwise
+    resampling shows a seam even at rest. The extension is OPAQUE with a ~1 px anti-aliased
+    edge and stays 2 px inside the sleeve silhouette: the first version had an 8 px fade
+    that read as a translucent smear once a bent forearm uncovered it (found in the
+    combined-pose evidence, fixed in prep). Contour audit: L 142 px distance contour /
+    19 px silhouette clearance / 8 px hem; R 118 / 35 / 15.
+  - MEASURED: asset rest parity mean|ΔRGB·α| 0.000 (max 0.6, xor 0); echo 0 px.
+- **Weights** (`mesh/rigWeights.ts`): weld ramp (8 px feather + 24 px ramp) for clavicle→upper
+  arm; elbow and wrist use ANGULAR cones around the joint (w = 0.9 / 0.5) — a projection
+  band or 8 px wrist band produced inverted triangles (failed experiments). Bound:
+  det J ≥ 1 − θ·0.75/w ⇒ fold-free up to 68.8° elbow / 38.2° wrist (limits are 60°/30°);
+  dropped second-order term ≤ 0.33 px. Rotational blending (elbow corrective) keeps band
+  vertices at their joint distance: ratio 1.0000 vs 0.9479 for linear blend skinning.
+- **IK** (`mesh/armIK.ts`): analytic 2-bone solve with limits; FK-generated targets reached
+  at 0.000 px (8 cases incl. shrug + lean), out-of-limit target clamped (elbow 60.0°).
+- **Rendering — seam-proof skinned layers** (`mesh/meshRender.ts`). Canvas2D clips are
+  anti-aliased: abutting triangles leave conflation seams, overlapping ones double-draw
+  semi-transparent texels. Path taken (each step measured):
+  1. 0.7 px centroid push (Stage 1) → seams on compressed sliver triangles at 60°.
+  2. uniform polygon offset → seams gone but on-edge α 128→179 (beads), rest parity
+     alphaXor 335 → FAIL.
+  3. offscreen `copy` compositing → rejected: Skia's `copy` under an AA clip is not a
+     pure lerp (117–120 instead of 128 on the edge).
+  4. per-edge offset + solid refill pass → interior OK, but 116 px of silhouette notches
+     (|Δα| > 24, up to 69) and +2.2 ms; the solid texture also redrew binary prep cuts
+     (fixed by eroding it there).
+  5. Skia did not cancel the coincident edges of abutting rigid rects at some rotations
+     (MEASURED 16 partial-α px at 60°, 0 at 0°/33°) → 1-texel stitch rects inside the
+     union (outline unchanged). This was the source of the long straight seams at 60°.
+  6. **FINAL: isolated additive layer**. Each layer with blended triangles is drawn on its
+     own offscreen surface with exact clips and `lighter`: complementary coverages sum to
+     the texel value (MEASURED ±7 α vs −67 with source-over), then the surface is
+     composited once with source-over (bbox only). The 2-pass path remains the fallback
+     when no canvas factory exists. Requirement: a layer must not overlap itself — gated.
+     Colour: bias vs the texel mean +0.18…+0.46 of one 8-bit level (direct blits:
+     −0.24…−0.29); at scale 1.0 both are exact.
+- **Selftest: 47/47 PASS** (`npm run test:puppet`), Stage-2 gates (MEASURED, final run):
+  | gate | result |
+  |---|---|
+  | rest parity, arms window | mean\|ΔRGB\| 0.89, alphaXor 261 px / 57 298 |
+  | echo (no arm art left in base) | 0 px |
+  | shoulder weld under 14° abduction | mean\|ΔRGB\| 0.03 within 5 px of the weld |
+  | weld-window holes, 6 poses | 88–105 (rest 102) |
+  | tears per layer alone, 6 poses | Δholes sleeve/panel/base ≤ 4 (combined −4/3/−11) |
+  | visible seams inside sleeves (α < 230) | rest 0, elbow 60° 1, combined 4 |
+  | silhouette AA at rest | mean\|Δα\| 2.68, 1 px > 24, max 25 |
+  | self-overlap (additive validity) | ≤ 9 px at every joint limit + head tilt |
+  | folded triangles at limits | 0 (min det 0.13 at elbow 60°) |
+  | wrist independence | hand Δ 14.3 px, cuff Δ 0.53 px |
+  | elbow independence | forearm Δ 49.6 px, upper arm Δ 0.00 px |
+  | elbow corrective | 1.0000 vs LBS 0.9479 |
+  | IK | 8 × 0.000 px; clamp ok |
+  | eye lock through breathing | 0.0000 px |
+  | frame cost, forced raster (node software proxy) | 21.8 ms (v0.5 flat 2.04 ms), gate ≤ 33 |
+- **Gate revisions (honest record)**:
+  1. area gate: the first spec ([0.97, 1.03] area ratio) wrongly assumed pixel coverage
+     is preserved under bending; replaced by "0 folded triangles + |r−1| ≤ max(0.03, θ/π)".
+  2. weld gate: hand↔body contact encloses background pockets that were counted as
+     holes → measured in the weld window (rows 150–300).
+  3. seam gate: first written as "no interior α < 250"; Skia quantises AA coverage
+     (complementary coverages sum to 94–100 %), so the exact-clip floor is a 2–6 %
+     residual (α 240–249). Gate = visible seams (α < 230), residual reported.
+  4. **perf gate — CORRECTION of an earlier claim**: @napi-rs/canvas defers rasterisation
+     until pixels are read, so the old "≤ 16 ms" check (and Stage 1's reported 7.8 ms)
+     timed command recording, not drawing. Each frame now reads 1 px back. Same method:
+     Stage-1 frame 20.7 ms, full skeleton 21.8 ms, v0.5 flat frame 2.04 ms. Budget
+     ≤ 33 ms for this CPU proxy; the browser (GPU canvas) is NOT measured here → `?perf=1`.
+- **Evidence**: `app/test_out/stage2_arms.png` (rest | shoulder 14° | elbow 40° | wrist ±25° |
+  shrug 4° + IK | combined), `stage2_weights.png` (skeleton + per-vertex dominant bone),
+  `stage2_hidden_art.png` (base layers alone | full composite).
 
 ## Reproducible commands
 ```bash

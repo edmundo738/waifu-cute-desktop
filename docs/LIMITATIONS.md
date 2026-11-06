@@ -60,11 +60,28 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
    under the sneakers and a pale rim-light on the curls; on dark/transparent stages these read as
    bright marks. They are original art (reference sheets), not alpha leaks — the automated leak gate
    measures 0. Any *new* bright fringe would fail the gate (`selftest.node.ts`).
-8. **v0.6 stage-1 scope**: the skinned rig (`?rig=v06`) articulates Root→Torso→Neck→Head only.
-   Under torso lean, the waist/forearm blend band (rows 336-384) shows a soft wobble because arms
-   still share the torso bone — stage 2 gives them clavicle→hand chains and removes it. The v0.5
-   renderer stays the default until live parity is confirmed. Eyes/mouth/hair overlays ride the
-   Head bone unchanged, so all v0.5 features work identically in v06 mode.
+8. **v0.6 stage-1 scope**: Root→Torso→Neck→Head. The waist/forearm wobble noted here is gone
+   since stage 2 (arms are separate skinned layers). The v0.5 renderer stays the default until
+   live parity is confirmed; eyes/mouth/hair overlays ride the Head bone unchanged.
+9. **v0.6 stage-2 residuals (measured, accepted for now)**:
+   - Elbow/wrist cones: the dropped second-order skinning term is ≤ 0.33 px.
+   - Inner-bend compression: at elbow 60° the sleeve texture compresses (min triangle det 0.13);
+     fabric bunching/folds are not simulated, the painted folds just compress.
+   - Jacket panels are rigid with the upper arm — no cloth physics until stage 4. Their hidden
+     side (≤ 28 px under the sleeve) is a 2D reconstruction, shaded by distance; it becomes
+     visible when a forearm swings inward and reads as dark jacket fabric, but it is not
+     artist-painted.
+   - Torso/base silhouette fringe is still the v0.5 canon (only the arm layers were decontaminated).
+   - Additive layer rendering: Skia's anti-aliasing coverage quantisation leaves a 2–6 %
+     transparency residual (α 240–249) on some triangle-edge pixels inside skinned layers
+     (≤ 111 px at elbow 60°; visible-seam count α < 230: 0–4 px). Colour bias +0.2…+0.5 of one
+     8-bit level (direct blits: −0.25). Correct only while a layer never overlaps itself:
+     measured ≤ 9 px at every joint limit; `clampArm` keeps poses inside those limits.
+   - Performance: Canvas2D per-triangle clips. Node software-raster proxy (forced raster):
+     ~21–22 ms/frame vs 2 ms for the v0.5 flat frame. The browser GPU canvas was NOT measured
+     here — use `?rig=v06&perf=1` (console). A WebGL renderer (watertight rasterisation, GPU
+     skinning) is the documented upgrade path if live frame times are too high; not adopted
+     without a measurement that justifies it.
 
 ## Explicit non-claims
 - No image in this package is animated, rigged or layered beyond the documented scaffold.
