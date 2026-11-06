@@ -1,0 +1,72 @@
+{
+  "component": "BODY_BASE/front",
+  "version": "v1",
+  "checkpoint": "CP-001",
+  "texture": "body_base_front.png",
+  "size": [
+    319,
+    990
+  ],
+  "space": "source gen_d pixels; crop origin = crop_origin_src",
+  "crop_origin_src": [
+    89,
+    53
+  ],
+  "source": "art_v07/base/base_body_gen_d.png",
+  "source_md5": "9a603e0208269a9ff2a0d42d2834ec95",
+  "landmarks_src": {
+    "chin": [
+      247,
+      197
+    ],
+    "skull_top": [
+      247,
+      62
+    ],
+    "sole_y": 1035,
+    "navel": [
+      257,
+      418
+    ],
+    "crotch": [
+      250,
+      533
+    ],
+    "shoulder_line_y": 235
+  },
+  "skin_palette": {
+    "base": [
+      150.0,
+      76.0,
+      52.0
+    ],
+    "shadow": [
+      116.0,
+      57.0,
+      40.0
+    ]
+  },
+  "underwear": {
+    "base": [
+      70.0,
+      40.0,
+      29.0
+    ],
+    "line": [
+      40.0,
+      12.0,
+      8.0
+    ],
+    "style": "thin opaque dark-brown strapless bandeau + briefs"
+  },
+  "components": {
+    "FACE/Nose": {
+      "texture": "nose.png",
+      "origin_src": [
+        234,
+        148
+      ]
+    }
+  },
+  "state": "IMPLEMENTADO (aguarda APROVADO do utilizador)"
+}

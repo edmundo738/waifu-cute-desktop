@@ -283,6 +283,15 @@ export default function App() {
               </button>
             ))}
           </div>
+          <div className="row">
+            <button
+              className="primary"
+              onClick={() => { window.location.href = "/v07/base.html"; }}
+              title="REMAKE v0.7 · CP-001: corpo base modular (frente) — fundos, zoom, nariz como componente, medições"
+            >
+              v0.7 · CP-001 corpo base →
+            </button>
+          </div>
 
           <h2>Next-level inputs</h2>
           <div className="row">

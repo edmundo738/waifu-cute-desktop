@@ -1,0 +1,66 @@
+{
+  "dark": {
+    "edge_px": 3379,
+    "lift_gt_4": 0,
+    "max_lift": -0.004680633544921875
+  },
+  "white": {
+    "edge_px": 3379,
+    "lift_gt_4": 0,
+    "max_lift": -3.76953125
+  },
+  "mid": {
+    "edge_px": 3379,
+    "lift_gt_4": 0,
+    "max_lift": -0.7812881469726562
+  },
+  "naive_vs_clean_mean_edge_L_on_dark": [
+    58.51239776611328,
+    26.549291610717773
+  ],
+  "skin_base_median": [
+    148.0,
+    74.0,
+    52.0
+  ],
+  "canon_pose01_mid": [
+    150,
+    76,
+    52
+  ],
+  "underwear_px": 22199,
+  "bbox_src": [
+    97,
+    61,
+    399,
+    1034
+  ],
+  "crop_origin_src": [
+    89,
+    53
+  ],
+  "size": [
+    319,
+    990
+  ],
+  "source_md5": "9a603e0208269a9ff2a0d42d2834ec95",
+  "nose_box_src": [
+    234,
+    148,
+    258,
+    172
+  ],
+  "edge_audit": {
+    "layer": "art_v07/base/body_base_front_v1.png",
+    "ring_px": 2567,
+    "light_fringe_px": 113,
+    "fringe_ratio": 0.044,
+    "ring_L_gt70": 1,
+    "ring_L_gt80": 0,
+    "ring_L_gt100": 0,
+    "ring_L_max": 71.0,
+    "interior_alpha_holes": 0,
+    "GATE_no_light_fringe": true,
+    "GATE_no_holes": true
+  }
+}

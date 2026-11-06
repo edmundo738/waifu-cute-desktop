@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>REMAKE v0.7 · CP-001 corpo base</title>
+<style>
+  :root { --bg:#14141a; --panel:#1d1d26; --ink:#ece7df; --mute:#9a93a8; --gold:#d7a94b; --ok:#5ccf8a; --bad:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:12px 18px; border-bottom:1px solid #2a2a36; display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0; }
+  header .state { color:var(--gold); font-weight:600; }
+  header a { color:var(--mute); margin-left:auto; }
+  main { display:grid; grid-template-columns: minmax(0,1fr) 340px; gap:0; height:calc(100vh - 50px); }
+  #stageWrap { overflow:auto; position:relative; }
+  canvas { display:block; margin:16px auto; image-rendering:auto; }
+  canvas.pixel { image-rendering:pixelated; }
+  aside { background:var(--panel); padding:14px 16px; overflow:auto; border-left:1px solid #2a2a36; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); margin:14px 0 6px; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; }
+  button { background:#272734; color:var(--ink); border:1px solid #3a3a4a; border-radius:6px; padding:5px 9px; cursor:pointer; font:inherit; }
+  button.on { border-color:var(--gold); color:var(--gold); }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  td { padding:3px 4px; border-bottom:1px solid #2a2a36; vertical-align:top; }
+  td:first-child { color:var(--mute); }
+  .pass { color:var(--ok); font-weight:600; } .fail { color:var(--bad); font-weight:600; }
+  .note { color:var(--mute); font-size:12.5px; }
+  img.cmp { width:100%; border-radius:6px; margin-top:6px; background:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>REMAKE v0.7 · CP-001 — corpo base (frente)</h1>
+  <span class="state">IMPLEMENTADO · aguarda APROVADO</span>
+  <a href="/">← voltar ao companion (v0.5 / v0.6)</a>
+</header>
+<main>
+  <div id="stageWrap"><canvas id="cv"></canvas></div>
+  <aside>
+    <h2>Fundo</h2>
+    <div class="row" id="bgRow"></div>
+    <h2>Zoom</h2>
+    <div class="row" id="zoomRow"></div>
+    <h2>Componentes</h2>
+    <div class="row">
+      <button id="noseBtn">nariz (FACE/Nose): ligado</button>
+    </div>
+    <p class="note">O nariz é uma camada separada, posicionada pelo manifest. Desligado = rosto em branco do corpo base,
+      pronto para receber outros narizes, olhos e boca (CP-002).</p>
+    <h2>Medições (geradas por tools/v07_body_base.py)</h2>
+    <table id="metrics"><tr><td>a carregar…</td></tr></table>
+    <h2>Proporções vs canon (mesma escala queixo→sola)</h2>
+    <img class="cmp" src="/rig_v07/canon_compare.jpg" alt="canon sheet A vs corpo base, linhas de 10 %" />
+    <p class="note">Linhas vermelhas = queixo e sola; azuis = cada 10 % da altura queixo→sola.</p>
+    <h2>O que NÃO está feito</h2>
+    <p class="note">Ainda não há rig neste corpo (esqueleto/pesos = CP seguintes), nem vista de costas processada,
+      nem cabeça/rosto com olhos e boca (CP-002). Esta página serve só para verificar o corpo base.</p>
+  </aside>
+</main>
+<script>
+(async function () {
+  const cv = document.getElementById('cv'); const ctx = cv.getContext('2d');
+  const man = await (await fetch('/rig_v07/manifest.json')).json();
+  const load = (src) => new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = src; });
+  const base = await load('/rig_v07/' + man.texture);
+  const nose = await load('/rig_v07/' + man.components['FACE/Nose'].texture);
+  const [ox, oy] = man.crop_origin_src; const [nx, ny] = man.components['FACE/Nose'].origin_src;
+  const st = { bg: 'dark', zoom: 1, nose: true };
+  const BGS = { white: ['branco', '#ffffff'], dark: ['escuro', '#18181c'], checker: ['transparente', null],
+                grey: ['cinza (canon)', '#d3d3d3'], blue: ['azul', '#5a8cc8'] };
+  const ZOOMS = [1, 2, 3, 4];
+  function btns(rowId, items, key, label) {
+    const row = document.getElementById(rowId); row.innerHTML = '';
+    for (const it of items) {
+      const b = document.createElement('button'); b.textContent = label(it);
+      if (st[key] === it) b.className = 'on';
+      b.onclick = () => { st[key] = it; render(); };
+      row.appendChild(b);
+    }
+  }
+  function render() {
+    btns('bgRow', Object.keys(BGS), 'bg', (k) => BGS[k][0]);
+    btns('zoomRow', ZOOMS, 'zoom', (z) => z + '×');
+    document.getElementById('noseBtn').textContent = 'nariz (FACE/Nose): ' + (st.nose ? 'ligado' : 'desligado');
+    document.getElementById('noseBtn').className = st.nose ? 'on' : '';
+    const pad = 24, z = st.zoom;
+    cv.width = (base.width + pad * 2) * z; cv.height = (base.height + pad * 2) * z;
+    cv.className = z > 1 ? 'pixel' : '';
+    ctx.imageSmoothingEnabled = false;
+    if (BGS[st.bg][1]) { ctx.fillStyle = BGS[st.bg][1]; ctx.fillRect(0, 0, cv.width, cv.height); }
+    else {
+      const s = 12 * z;
+      for (let y = 0; y < cv.height; y += s) for (let x = 0; x < cv.width; x += s) {
+        ctx.fillStyle = ((x / s + y / s) & 1) ? '#9a9a9a' : '#cfcfcf'; ctx.fillRect(x, y, s, s);
+      }
+    }
+    ctx.drawImage(base, pad * z, pad * z, base.width * z, base.height * z);
+    if (st.nose) ctx.drawImage(nose, (pad + nx - ox) * z, (pad + ny - oy) * z, nose.width * z, nose.height * z);
+  }
+  document.getElementById('noseBtn').onclick = () => { st.nose = !st.nose; render(); };
+  render();
+  try {
+    const m = await (await fetch('/rig_v07/metrics.json')).json();
+    const a = m.edge_audit, T = document.getElementById('metrics');
+    const row = (k, v, cls) => `<tr><td>${k}</td><td class="${cls || ''}">${v}</td></tr>`;
+    T.innerHTML =
+      row('contorno claro (anel exterior, L&gt;80 sobre escuro)', `${a.ring_L_gt80} px de ${a.ring_px} → ${a.GATE_no_light_fringe ? 'PASS' : 'FAIL'}`, a.GATE_no_light_fringe ? 'pass' : 'fail') +
+      row('anel L&gt;60 (anti-aliasing escuro da linha)', `${a.light_fringe_px} px, máx L ${a.ring_L_max}`) +
+      row('buracos de alfa no interior', `${a.interior_alpha_holes} → ${a.GATE_no_holes ? 'PASS' : 'FAIL'}`, a.GATE_no_holes ? 'pass' : 'fail') +
+      row('borda média sobre escuro: recorte ingénuo → limpo', m.naive_vs_clean_mean_edge_L_on_dark.map((v) => v.toFixed(1)).join(' → ')) +
+      row('pele (mediana) vs canon pose_01', `${m.skin_base_median.join(',')} vs ${m.canon_pose01_mid.join(',')}`) +
+      row('roupa interior (px)', m.underwear_px) +
+      row('tamanho da textura', m.size.join(' × ') + ' px');
+  } catch (e) { document.getElementById('metrics').innerHTML = '<tr><td>métricas indisponíveis</td></tr>'; }
+})();
+</script>
+</body>
+</html>
