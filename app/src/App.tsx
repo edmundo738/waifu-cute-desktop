@@ -26,6 +26,9 @@ const FACE_BY_TRIGGER: Record<TriggerName, FaceParams> = {
   talk: {},
 };
 
+const TALK_PHRASE =
+  "Olá! A minha boca agora mexe mesmo: camadas, máscaras e mandíbula, tudo feito à mão.";
+
 async function detectRig(): Promise<boolean> {
   try {
     const r = await fetch(RIG_MANIFEST_URL, { method: "HEAD" });
@@ -72,7 +75,6 @@ export default function App() {
         pushLog(`trigger:${t} -> pose:${p}`);
         if (renderer instanceof PuppetRenderer) {
           renderer.setFaceParams(FACE_BY_TRIGGER[t]);
-          if (t === "talk") renderer.setSpeech("Olá! A minha boca agora mexe mesmo: camadas, máscaras e mandíbula, tudo feito à mão.");
         }
       } else if (renderer instanceof PuppetRenderer) {
         renderer.setFaceParams({ browRaise: 0, gazeBias: { x: 0, y: 0 } });
@@ -119,7 +121,13 @@ export default function App() {
       });
     })();
 
-    const offTriggers = subscribeTriggers((t) => sm.trigger(t));
+    const offTriggers = subscribeTriggers((t) => {
+      sm.trigger(t);
+      // talk has no pose swap, so it never reaches onChange: drive the mouth here
+      if (t === "talk" && rendererRef.current instanceof PuppetRenderer) {
+        rendererRef.current.setSpeech(TALK_PHRASE);
+      }
+    });
     const offPointer = subscribePointer((x, y) => renderer?.setGaze(x, y));
 
     return () => {

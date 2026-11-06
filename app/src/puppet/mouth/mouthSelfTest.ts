@@ -11,6 +11,7 @@
  * on the evidence frames: app/test_out/mouth_shapes.png + mouth_ramp.png.
  */
 import { mouthGeometry, MouthSmoother, lerpShape, type MouthAnchors, type MouthGeom } from "./mouthMath";
+import { JawController } from "./jawController";
 import { SHAPE_PARAMS, MOUTH_SHAPES, speechTimeline, sampleTimeline, timelineTotal, type MouthShape } from "./mouthShapes";
 import type { PuppetParams, RigManifest, View } from "../puppetRender";
 
@@ -106,6 +107,26 @@ export function runMouthSelfTest(d: MouthTestDeps): void {
   d.check("speech timeline finite, rests closed after the end, vowels mid-phrase",
     total > 0.5 && total < 8 && sampleTimeline(tl, total + 1).shape === "CLOSED" && mid.open > 0.2,
     `dur=${total.toFixed(2)}s segs=${tl.length} mid=${mid.shape}@${mid.open}`);
+
+  // regression: the controller itself must turn a speech timeline into real
+  // opening motion over time and return to rest (bug class: trigger wired to
+  // a callback that never fires for pose-less triggers)
+  const jc = new JawController();
+  jc.setSpeech("Olá! Eu falo mesmo contigo.", 0);
+  let maxO = 0;
+  let tSim = 0;
+  const opens: number[] = [];
+  while (jc.speechActive(tSim) && tSim < 10) {
+    tSim += 1 / 60;
+    jc.step(1 / 60, tSim);
+    maxO = Math.max(maxO, jc.opening);
+    opens.push(jc.opening);
+  }
+  for (let i = 0; i < 90; i++) { tSim += 1 / 60; jc.step(1 / 60, tSim); }
+  const moved = opens.filter((x) => x > 0.15).length;
+  d.check("JawController: speech timeline produces real opening motion over time, then rests",
+    maxO > 0.5 && moved > 20 && jc.opening < 0.05,
+    `maxOpen=${maxO.toFixed(2)} frames>0.15=${moved}/${opens.length} end=${jc.opening.toFixed(3)}`);
 
   // ---- evidence frames (visual criteria 2, 6, 7, 8) ----
   const cell = { x0: 596, y0: 138, x1: 664, y1: 198 };

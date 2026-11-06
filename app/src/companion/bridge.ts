@@ -20,6 +20,8 @@ const KEY_MAP: Record<string, TriggerName> = {
 
 export function subscribeTriggers(cb: (t: TriggerName) => void): () => void {
   const onKey = (e: KeyboardEvent) => {
+    const el = e.target as HTMLElement | null;
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return; // typing in chat ≠ hotkey
     const t = KEY_MAP[e.key.toLowerCase()];
     if (t) cb(t);
   };
