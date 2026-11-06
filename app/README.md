@@ -19,6 +19,8 @@ npm run build      # typecheck + production bundle into app/dist
 | Transparent full-body sprites (`public/sprites/`) | ✅ real alpha mattes of the six canon poses (`tools/make_sprites` step, matting verified on checkerboard) |
 | `StaticSpriteRenderer` | ✅ real code; **placeholder motion only** (breathing scale, micro sway, cursor lean via 2D transforms). Not a rig. |
 | `PuppetRenderer` + `src/puppet/*` | ✅ **component puppet v0.2**: eyeball/iris translation clipped to eye openings (independent X/Y limits), upper-lid partial/full blinks over the eyeball, independent brows, head with own smaller limits & slower smoothing; headless acceptance tests + evidence frames via `npm run test:puppet` |
+| `faceFollow.ts` | ✅ optional **on-device webcam face-follow** (MediaPipe FaceLandmarker WASM, mirrored pip preview); gaze priority #1 while active; camera released on toggle-off |
+| `brain.ts` | ✅ **local-LLM chat** against an OpenAI-compatible endpoint on the user's PC (LM Studio default `127.0.0.1:1234`): PT-PT persona, sentiment→reaction triggers, talk cycle during replies; honest canned-reply fallback when offline |
 | `CompanionStateMachine` | ✅ trigger → pose reactions with spec durations (wave 2.3 s, happy 2.0 s, surprised 1.55 s, playful 1.5 s, think cap) |
 | `bridge.ts` | ✅ one subscription API over Tauri 2 events (`companion://trigger`) + browser keyboard/pointer fallback |
 | Viseme mouth preview | ✅ cycles `expressions/viseme_*.png` art during the talk demo — **art preview, not mouth rigging** |

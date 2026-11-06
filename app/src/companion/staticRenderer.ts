@@ -52,7 +52,11 @@ export class StaticSpriteRenderer implements CompanionRenderer {
   }
 
   setGaze(x: number, y: number): void {
-    this.gaze = { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) };
+    // placeholder lean keeps the old window-centred normalization (it has no face)
+    this.gaze = {
+      x: Math.max(-1, Math.min(1, (x / window.innerWidth) * 2 - 1)),
+      y: Math.max(-1, Math.min(1, (y / window.innerHeight) * 2 - 1)),
+    };
   }
 
   dispose(): void {

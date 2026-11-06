@@ -1,6 +1,6 @@
 import { CompanionRenderer, PoseName, SPRITE_URL } from "../companion/types";
 import { RigManifest, RigAssets, computeView, renderPuppetFrame } from "./puppetRender";
-import { headTarget, smoothDamp, idleGaze, blinkValue } from "./puppetMath";
+import { headTarget, smoothDamp, idleGaze, blinkValue, pointerToGaze } from "./puppetMath";
 
 export const RIG_MANIFEST_URL = "/rig/manifest.json";
 const FIG_BOX: [number, number, number, number] = [470, 7, 789, 842];
@@ -37,6 +37,9 @@ export class PuppetRenderer implements CompanionRenderer {
   private blink = 0;
   private breath = 0;
   private lastPointer = -10;
+  private faceFollow = false;
+  private external = { x: 0, y: 0 };
+  private lastExternal = -10;
   private t = 0;
   private last = 0;
   private raf = 0;
@@ -92,9 +95,34 @@ export class PuppetRenderer implements CompanionRenderer {
     this.pose = pose;
   }
 
+  /** Raw viewport cursor coords → gaze relative to HER eyes' on-screen position
+   *  (canvas rect + view transform). Fixes the off-axis feel of window-centred
+   *  normalization: cursor exactly over her face = neutral (0,0). */
   setGaze(x: number, y: number): void {
-    this.gazeTarget = { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) };
+    const rect = this.canvas.getBoundingClientRect();
+    const dpr = this.canvas.width / Math.max(1, rect.width);
+    const view = computeView(this.canvas.width, this.canvas.height, FIG_BOX);
+    const ex = this.man ? (this.man.eyes.L.open_c[0] + this.man.eyes.R.open_c[0]) / 2 : 632;
+    const ey = this.man ? (this.man.eyes.L.open_c[1] + this.man.eyes.R.open_c[1]) / 2 : 134;
+    const eyeX = rect.left + (view.ox + ex * view.scale) / dpr;
+    const eyeY = rect.top + (view.oy + ey * view.scale) / dpr;
+    this.gazeTarget = pointerToGaze(x, y, {
+      eyeX, eyeY,
+      sensX: Math.max(160, window.innerWidth * 0.36),
+      sensY: Math.max(120, window.innerHeight * 0.4),
+    });
     this.lastPointer = this.t;
+  }
+
+  /** Webcam face-follow source (MediaPipe, on-device): normalized -1..1. */
+  setExternalGaze(x: number, y: number): void {
+    this.external = { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) };
+    this.lastExternal = this.t;
+  }
+
+  setFaceFollow(on: boolean): void {
+    this.faceFollow = on;
+    if (!on) this.lastExternal = -10;
   }
 
   setFaceParams(p: FaceParams): void {
@@ -126,11 +154,12 @@ export class PuppetRenderer implements CompanionRenderer {
   };
 
   private step(dt: number): void {
-    // gaze: cursor while active, idle wander otherwise, plus expression bias
-    const cursorActive = this.t - this.lastPointer < 3;
-    const idle = idleGaze(this.t);
-    const tx = (cursorActive ? this.gazeTarget.x : idle.x) + this.gazeBias.x;
-    const ty = (cursorActive ? this.gazeTarget.y : idle.y) + this.gazeBias.y;
+    // gaze source priority: webcam face > cursor (fresh) > idle wander; + bias
+    const faceActive = this.faceFollow && this.t - this.lastExternal < 0.6;
+    const cursorActive = !faceActive && this.t - this.lastPointer < 3;
+    const src = faceActive ? this.external : cursorActive ? this.gazeTarget : idleGaze(this.t);
+    const tx = src.x + this.gazeBias.x;
+    const ty = src.y + this.gazeBias.y;
     this.gaze.x = smoothDamp(this.gaze.x, tx, 10, dt); // eyes: fast, own smoothing
     this.gaze.y = smoothDamp(this.gaze.y, ty, 10, dt);
 

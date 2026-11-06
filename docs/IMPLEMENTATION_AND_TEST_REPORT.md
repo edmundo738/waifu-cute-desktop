@@ -27,6 +27,19 @@ Evidence labels: **FACT** (documented/source-verified) · **MEASURED** (assertio
 9. No visual gaps between reconstructed layers — **OBSERVED** frames (neck patch + silhouette alpha); earlier gap/bar defects found via frames and fixed (failed experiments kept in git history of this branch).
 10. Performance acceptable — **INFERRED** for target Windows hardware: one 2D canvas, 9 drawImage calls/frame, no WebGL; **MEASURED** headless render of 17 evidence frames <2 s total.
 
+## v0.3 additions — gaze axis fix + next-level inputs
+
+- **Axis fix [MEASURED]**: pointer→gaze is now relative to the on-screen eye position
+  (canvas rect + view transform). Self-test asserts cursor-over-eyes = (0,0), per-axis
+  clamping, diagonal proportionality and the |v|^0.85 soft-saturation curve → 10/10 PASS.
+- **Webcam face-follow [IMPLEMENTED; in-browser verification pending user camera]**:
+  MediaPipe FaceLandmarker (WASM, on-device, optional toggle, mirrored pip preview);
+  gaze priority above cursor; camera stream released on toggle-off.
+- **Local-LLM brain [IMPLEMENTED; probe path verified]**: OpenAI-compatible chat to
+  `http://127.0.0.1:1234/v1` (user's LM Studio, qwen3-4b): PT-PT persona system prompt,
+  sentiment→reaction triggers, talk/viseme cycle during replies, and an honest canned-reply
+  fallback labelled offline when the endpoint is unreachable.
+
 ## Reproducible commands
 ```bash
 cd app && npm install

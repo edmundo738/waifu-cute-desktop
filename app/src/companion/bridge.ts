@@ -40,9 +40,11 @@ export function subscribeTriggers(cb: (t: TriggerName) => void): () => void {
   };
 }
 
+/** Raw viewport CSS coordinates — each renderer maps them relative to its own
+ *  on-screen character position (see puppetMath.pointerToGaze). */
 export function subscribePointer(cb: (x: number, y: number) => void): () => void {
   const onMove = (e: PointerEvent) => {
-    cb((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+    cb(e.clientX, e.clientY);
   };
   window.addEventListener("pointermove", onMove);
   return () => window.removeEventListener("pointermove", onMove);

@@ -12,6 +12,7 @@
     "test:puppet": "tsx src/puppet/selftest.node.ts"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

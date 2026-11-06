@@ -21,6 +21,11 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
     partial/full blink lids, independent brows, head with own limits/smoothing; headless
     acceptance tests (`npm run test:puppet`) and evidence frames in `app/test_out/`;
     default renderer in the app whenever `public/rig/manifest.json` is present.
+12. **v0.3**: gaze axis relative to her on-screen eye position (10/10 selftest), optional
+    on-device webcam face-follow (MediaPipe WASM) and local-LLM brain hook (LM Studio
+    OpenAI-compatible) with honest canned-reply fallback when offline. Caveats: face-follow
+    needs camera permission and downloads the WASM/model from CDN on first use; the brain
+    needs LM Studio running with CORS enabled (in the Tauri shell the call moves to Rust).
 
 ## Partial
 1. **Viseme references are art guidance only**: `expressions/viseme_*.png` illustrate A/I/U/E/O

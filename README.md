@@ -61,3 +61,8 @@ Requires Python 3 with `pillow`, `numpy` and `pytoshop` (`pip install pillow num
 - No unlicensed Live2D SDK, model or third-party asset is included; see
   [`live2d/LICENSE_REVIEW.md`](live2d/LICENSE_REVIEW.md) and
   [`docs/ANIMATION_ENGINE_EVALUATION.md`](docs/ANIMATION_ENGINE_EVALUATION.md).
+- Webcam face-follow and the local-LLM brain run **entirely on the user's machine**
+  (MediaPipe WASM in-browser; LM Studio on localhost). Nothing is uploaded anywhere.
+- `references/variant_*.png` are alternate costume/view sheets (back view, butterfly
+  necklace variant); the canon remains `poses/pose_01_neutral.png` + the original sheet
+  (Africa pendant, jacket) — variants are reference only, not a redesign.

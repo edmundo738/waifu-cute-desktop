@@ -5,7 +5,7 @@
  */
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { gazeOffset, blinkValue, lidBottomY, headTarget, smoothDamp, clamp, idleGaze } from "./puppetMath";
+import { gazeOffset, blinkValue, lidBottomY, headTarget, smoothDamp, clamp, idleGaze, pointerToGaze } from "./puppetMath";
 import { renderPuppetFrame, computeView, RigManifest, RigAssets, PuppetParams } from "./puppetRender";
 
 const ROOT = new URL("../..", import.meta.url).pathname;
@@ -88,6 +88,20 @@ async function main(): Promise<void> {
   check("idle gaze wander stays within ±0.35 range", Math.abs(ig.x) <= 0.35 && Math.abs(ig.y) <= 0.25,
     `(${ig.x.toFixed(2)},${ig.y.toFixed(2)})`);
   check("clamp primitive", clamp(5, -1, 1) === 1 && clamp(-5, -1, 1) === -1 && clamp(0.3, -1, 1) === 0.3, "ok");
+
+  // ---- gaze axis: pointer→gaze is relative to the eyes' screen position
+  const pm = { eyeX: 500, eyeY: 300, sensX: 200, sensY: 150 };
+  const zc = pointerToGaze(500, 300, pm);
+  const rgt = pointerToGaze(900, 300, pm);
+  const up = pointerToGaze(500, 0, pm);
+  const diag = pointerToGaze(600, 375, pm);
+  const mid = pointerToGaze(600, 300, pm);
+  check("pointer→gaze: cursor over the eyes = neutral (0,0); extremes clamp per axis",
+    zc.x === 0 && zc.y === 0 && rgt.x === 1 && rgt.y === 0 && up.x === 0 && up.y === -1,
+    `center=(${zc.x},${zc.y}) right=(${rgt.x},${rgt.y}) up=(${up.x},${up.y})`);
+  check("pointer→gaze: diagonal proportional + soft saturation (mid-range responsive)",
+    Math.abs(diag.x - Math.pow(0.5, 0.85)) < 1e-9 && Math.abs(diag.y - Math.pow(0.5, 0.85)) < 1e-9 && mid.x > 0.5,
+    `diag=(${diag.x.toFixed(3)},${diag.y.toFixed(3)}) mid=${mid.x.toFixed(3)} (>raw 0.5)`);
 
   // ---- evidence frames (acceptance 1,4,7,9 visual) ----
   const CW = 520, CH = 640;

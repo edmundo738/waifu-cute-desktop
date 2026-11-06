@@ -17,7 +17,7 @@ export type TriggerName =
 export interface CompanionRenderer {
   readonly kind: "static" | "live2d" | "puppet";
   setPose(pose: PoseName): void;
-  setGaze(x: number, y: number): void; // -1..1 normalized cursor position
+  setGaze(x: number, y: number): void; // raw viewport CSS px (cursor); renderer maps to gaze
   dispose(): void;
 }
 

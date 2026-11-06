@@ -76,3 +76,23 @@ export function browOffset(intensity: number, limits: RigLimits): Vec2 {
 export function idleGaze(t: number): Vec2 {
   return { x: 0.35 * Math.sin(t * 0.31), y: 0.25 * Math.sin(t * 0.21 + 1.7) };
 }
+
+/** Screen-space mapping config: the ON-SCREEN position of the character's eyes
+ *  (canvas rect + view transform, NOT the window centre) plus sensitivity radii. */
+export interface PointerMap {
+  eyeX: number; eyeY: number;   // eye centre in viewport CSS px
+  sensX: number; sensY: number; // px distance that saturates each axis
+}
+
+/**
+ * Pointer → gaze target. Relative to the eyes' real screen position so the
+ * neutral axis is exactly "cursor over her face", with a soft saturation curve
+ * (|v|^0.85) that makes mid-range cursor distances feel more responsive.
+ */
+export function pointerToGaze(px: number, py: number, m: PointerMap): Vec2 {
+  const soft = (v: number): number => {
+    const c = clamp(v, -1, 1);
+    return Math.sign(c) * Math.pow(Math.abs(c), 0.85);
+  };
+  return { x: soft((px - m.eyeX) / m.sensX), y: soft((py - m.eyeY) / m.sensY) };
+}

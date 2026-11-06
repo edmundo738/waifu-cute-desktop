@@ -1,11 +1,17 @@
 # Eye Tracking Specification (implemented in `app/src/puppet/`)
 
 ## Inputs (priority order)
-1. **Cursor position** relative to the character (bridge `subscribePointer`, normalised −1..1;
-   active while pointer moved <3 s ago).
-2. **Manual gaze targets** (UI buttons left/right/up/down/center → synthetic pointer events).
-3. **Interaction gaze bias** (triggers add `gazeBias`, e.g. thinking → up-left).
-4. **Idle gaze wander** (Lissajous ±0.35/±0.25, `idleGaze(t)`) when no cursor input.
+1. **Webcam face-follow** (optional toggle; MediaPipe FaceLandmarker WASM, on-device):
+   user's face centre (nose+forehead+chin landmarks) in the mirrored selfie frame →
+   normalized gaze with gain 3.2 (`faceFollow.ts`); freshest source wins while <0.6 s old.
+   No frames ever leave the machine.
+2. **Cursor position**, mapped **relative to her eyes' real on-screen position**
+   (canvas rect + view transform → `pointerToGaze`), NOT the window centre: cursor exactly
+   over her face = neutral (0,0). Sensitivity radii 36 % viewport width / 40 % height;
+   soft saturation |v|^0.85 for mid-range responsiveness; active while pointer <3 s old.
+3. **Manual gaze targets** (UI buttons left/right/up/down/center → synthetic pointer events).
+4. **Interaction gaze bias** (triggers add `gazeBias`, e.g. thinking → up-left).
+5. **Idle gaze wander** (Lissajous ±0.35/±0.25, `idleGaze(t)`) when no other source is fresh.
 
 ## Outputs
 - `gaze.x, gaze.y` (−1..1) → iris translation `dx = clamp(gaze.x)·5 px`, `dy = clamp(gaze.y)·3 px`
