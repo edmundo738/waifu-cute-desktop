@@ -66,6 +66,8 @@ Parameter naming follows Live2D Cubism conventions (`ParamAngleX/Y/Z`, `ParamEye
 - **Duration:** = utterance length.
 - **Loop:** no; streams while audio plays.
 - **Trigger:** TTS playback events (per-phoneme timestamps from the voice pipeline).
+- **Art reference:** `expressions/viseme_reference_sheet.png` (A/I/U/E/O on her face);
+  rig-quality viseme meshes and motion curves remain Cubism Editor work.
 
 ### 9. wave
 - **Parts:** right upper arm, forearm, hand, jacket sleeve R (follow), head tilt +4°, smile +0.4.

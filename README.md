@@ -17,7 +17,7 @@ animated desktop companion on Windows 11 (Tauri 2 + React + TypeScript + Live2D 
 |---|---|---|
 | `references/` | The three approved original reference images (+ small QA crops) | ✅ complete (canon) |
 | `poses/` | Six full-body pose illustrations + combined `pose_reference_sheet.png` | ✅ complete |
-| `expressions/` | 6 canon expression crops, 3 generated high-res close-ups, combined sheet | ⚠️ partial (wink close-up pending) |
+| `expressions/` | 6 canon expression crops, 4 generated high-res close-ups (incl. wink), 5 viseme mouth-shape references, combined sheets | ✅ complete |
 | `layers/` | 14 part crops, `parts_manifest.json`, sampled `color_palette.json`, layered `waifu_companion_scaffold.psd` | ⚠️ scaffold only — not cut/matted art |
 | `animations/` | `ANIMATION_SPEC.md` + machine-readable `animations.json` (12 animations) | ✅ spec complete (no motion files — by design, see limitations) |
 | `live2d/` | `LIVE2D_PREPARATION.md` (parts tree, parameters, pipeline) + `LICENSE_REVIEW.md` | ✅ docs complete (rigging = manual, Cubism Editor) |

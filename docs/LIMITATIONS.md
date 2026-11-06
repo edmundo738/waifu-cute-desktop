@@ -12,10 +12,12 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
 6. Animation specification for 12 animations (markdown + JSON) with parts, start/end, duration, loop, trigger.
 7. Live2D preparation docs: part tree, parameter plan, pipeline; license review with sources.
 8. Reproducible tooling in `tools/`.
+9. High-res **wink close-up** (completing the four close-ups) and five **viseme mouth-shape
+   art references** (A/I/U/E/O) with a combined viseme sheet.
 
 ## Partial
-1. **Wink high-res close-up**: generation hit the per-turn image limit; `expressions/canon_wink.png`
-   (crop from the approved sheet) is the interim reference. Regenerate next session and drop it into `expressions/`.
+1. **Viseme references are art guidance only**: `expressions/viseme_*.png` illustrate A/I/U/E/O
+   on her face; rig-quality mouth meshes and `.motion3.json` talk curves are still authored in Cubism Editor.
 2. **Layer separation**: the PSD is a scaffold of rectangular crops — no alpha mattes, no hidden-area
    completion, groups not sub-divided (eyes/lids/brows/mouth interior, arm chains, curl groups). See `layers/PARTS_INVENTORY.md`.
 3. **Poses 02–04 provenance**: original generations contained duplicate figures; the shipped poses are

@@ -1,6 +1,6 @@
 # Validation Report — Stage E
 
-Generated: 2026-11-06T07:12:09+00:00  
+Generated: 2026-11-06T07:33:08+00:00  
 Result: **PASS**
 
 | Deliverable | Size | Detail |
@@ -24,7 +24,14 @@ Result: **PASS**
 | expressions/expression_happy_closeup.png | 1463 KB | 1264x843 RGB |
 | expressions/expression_surprised_closeup.png | 1464 KB | 1264x843 RGB |
 | expressions/expression_thinking_closeup.png | 1528 KB | 1264x843 RGB |
-| expressions/expression_reference_sheet.png | 500 KB | 2180x1070 RGB |
+| expressions/expression_wink_closeup.png | 1404 KB | 1264x843 RGB |
+| expressions/viseme_A.png | 1296 KB | 1264x843 RGB |
+| expressions/viseme_I.png | 1477 KB | 1264x843 RGB |
+| expressions/viseme_U.png | 1519 KB | 1264x843 RGB |
+| expressions/viseme_E.png | 1516 KB | 1264x843 RGB |
+| expressions/viseme_O.png | 1530 KB | 1264x843 RGB |
+| expressions/expression_reference_sheet.png | 560 KB | 2180x1030 RGB |
+| expressions/viseme_reference_sheet.png | 395 KB | 1820x620 RGB |
 | layers/parts_manifest.json | 3 KB | json ok |
 | layers/color_palette.json | 0 KB | json ok |
 | layers/waifu_companion_scaffold.psd | 5068 KB |  |

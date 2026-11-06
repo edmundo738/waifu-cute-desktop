@@ -48,8 +48,10 @@ Machine-readable: `layers/color_palette.json`.
 
 Approved expression set (from `ref_sheet_a` grid, cropped in `expressions/canon_*.png`):
 **happy, curious, surprised, wink, sad, angry.** High-res generated close-ups v1:
-**happy, surprised, thinking** (`expressions/expression_*_closeup.png`).
-Combined view: `expressions/expression_reference_sheet.png`.
+**happy, surprised, thinking, wink** (`expressions/expression_*_closeup.png`).
+Mouth-shape art references for the talk animation: `expressions/viseme_[A I U E O].png` +
+`expressions/viseme_reference_sheet.png` (guidance art only — rig visemes are authored
+in Cubism Editor). Combined view: `expressions/expression_reference_sheet.png`.
 
 ## 5. Pose canon (six animation reference poses)
 
