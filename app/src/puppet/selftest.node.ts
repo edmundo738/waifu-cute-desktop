@@ -6,7 +6,10 @@
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { gazeOffset, blinkValue, lidBottomY, headTarget, smoothDamp, clamp, idleGaze, pointerToGaze } from "./puppetMath";
-import { renderPuppetFrame, computeView, RigManifest, RigAssets, PuppetParams } from "./puppetRender";
+import { mouthGeometry } from "./mouth/mouthMath";
+import { SHAPE_PARAMS } from "./mouth/mouthShapes";
+import { runMouthSelfTest, type MouthGridSpec } from "./mouth/mouthSelfTest";
+import { renderPuppetFrame, computeView, RigManifest, RigAssets, PuppetParams, View } from "./puppetRender";
 
 const ROOT = new URL("../..", import.meta.url).pathname;
 const RIG = ROOT + "public/rig/";
@@ -24,14 +27,18 @@ const FIG: [number, number, number, number] = [470, 7, 789, 842];
 
 async function main(): Promise<void> {
   const load = async (f: string) => loadImage(RIG + f);
-  const [body, neck, headBase, irisL, irisR, lidL, lidR, browL, browR] = await Promise.all([
-    load("body_base.png"), load("neck_patch.png"), load("head_base.png"),
+  const [body, neck, headBase, irisL, irisR, lidL, lidR, browL, browR, mouthClosed, mouthJaw] = await Promise.all([
+    load("body_base.png"), load("neck_patch.png"), load("head_base_nm.png"),
     load("iris_L.png"), load("iris_R.png"), load("lid_L.png"), load("lid_R.png"),
-    load("brow_L.png"), load("brow_R.png"),
+    load("brow_L.png"), load("brow_R.png"), load("mouth_closed.png"), load("mouth_jaw.png"),
   ]);
   const assets: RigAssets = {
     body, bodyW: body.width, bodyH: body.height, neck, headBase,
     iris: { L: irisL, R: irisR }, lid: { L: lidL, R: lidR }, brow: { L: browL, R: browR },
+    mouth: {
+      closed: mouthClosed, closedW: mouthClosed.width, closedH: mouthClosed.height,
+      jaw: mouthJaw, jawW: mouthJaw.width, jawH: mouthJaw.height,
+    },
     sizes: {
       headBase: [headBase.width, headBase.height],
       iris_L: [irisL.width, irisL.height], iris_R: [irisR.width, irisR.height],
@@ -106,15 +113,53 @@ async function main(): Promise<void> {
   // ---- evidence frames (acceptance 1,4,7,9 visual) ----
   const CW = 520, CH = 640;
   const view = computeView(CW, CH, FIG);
-  const frame = (p: Partial<PuppetParams>) => {
-    const canvas = createCanvas(CW, CH);
+  const geom0 = mouthGeometry(0, SHAPE_PARAMS.CLOSED, man.mouth);
+  const frame = (p: Partial<PuppetParams>, v: View = view, cw = CW, ch = CH) => {
+    const canvas = createCanvas(cw, ch);
     const ctx = canvas.getContext("2d");
     renderPuppetFrame(ctx as never, assets, man, {
       gaze: { x: 0, y: 0 }, blink: 0, browRaise: 0,
-      headRot: 0, headDx: 0, headDy: 0, breathPhase: 0, ...p,
-    }, view, { w: CW, h: CH, backdrop: "#eceae8" }); // evidence frames get an explicit backdrop; app stage stays transparent
+      headRot: 0, headDx: 0, headDy: 0, breathPhase: 0, mouth: geom0, ...p,
+    }, v, { w: cw, h: ch, backdrop: "#eceae8" }); // evidence frames get an explicit backdrop; app stage stays transparent
     return canvas;
   };
+  const renderDep = (p: Partial<PuppetParams>, v?: View, grid?: MouthGridSpec) => {
+    if (!grid) return frame(p, v ?? view);
+    const out = createCanvas(grid.cw * grid.cols, grid.ch * grid.rows);
+    const gctx = out.getContext("2d");
+    grid.cells.forEach((cp, i) => {
+      const c = frame({ ...p, ...cp }, v ?? view, grid.cw, grid.ch);
+      gctx.drawImage(c, (i % grid.cols) * grid.cw, Math.floor(i / grid.cols) * grid.ch);
+    });
+    return out;
+  };
+
+  // ---- Mouth Puppet v0.4 tests + evidence frames ----
+  runMouthSelfTest({
+    check, man,
+    render: renderDep,
+    save: (n, b) => writeFileSync(OUT + n, Buffer.from(b)),
+  });
+
+  // criterion 1 (pixel): rest composition vs ORIGINAL canon art in mouth zone
+  const pose = await loadImage(ROOT + "../poses/pose_01_neutral.png");
+  const pc = createCanvas(pose.width, pose.height);
+  pc.getContext("2d").drawImage(pose, 0, 0);
+  const pd = pc.getContext("2d").getImageData(0, 0, pose.width, pose.height).data;
+  const restC = frame({}, { scale: 1, ox: -512, oy: 0 }, 240, 212);
+  const rd = restC.getContext("2d").getImageData(0, 0, 240, 212).data;
+  let acc = 0, npx = 0;
+  for (let y = 158; y < 178; y++) {
+    for (let x = 612; x < 650; x++) {
+      const pi = (y * pose.width + x) * 4;
+      if (pd[pi + 3] < 250) continue;
+      const ri = (y * 240 + (x - 512)) * 4;
+      acc += (Math.abs(rd[ri] - pd[pi]) + Math.abs(rd[ri + 1] - pd[pi + 1]) + Math.abs(rd[ri + 2] - pd[pi + 2])) / 3;
+      npx++;
+    }
+  }
+  check("mouth criterion 1: rest mouth pixels match the ORIGINAL canon art", acc / npx < 7,
+    `mean|Δ|=${(acc / npx).toFixed(2)} over ${npx}px of the mouth zone (k=1 composite vs pose)`);
   const grid = createCanvas(CW * 3, CH * 3);
   const gctx = grid.getContext("2d");
   const gazes: [number, number][] = [[-1, -1], [0, -1], [1, -1], [-1, 0], [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];

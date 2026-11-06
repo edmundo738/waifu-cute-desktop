@@ -91,5 +91,26 @@
    2.0
   ],
   "brow_dx": 2.0
- }
+ },
+ "mouth": {
+  "cx": 629.5,
+  "seam_y": 166.0,
+  "upper_lip_bottom_y": 165.2,
+  "lower_lip_top_y": 167.5,
+  "base_w": 27.0,
+  "jaw_dy": 5.5,
+  "closed_box": [
+   612,
+   158.5,
+   648,
+   175.5
+  ],
+  "jaw_box": [
+   606,
+   166,
+   654,
+   179
+  ]
+ },
+ "head_base": "head_base_nm.png"
 }

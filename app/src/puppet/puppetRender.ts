@@ -10,6 +10,9 @@
  *     → brow L/R (independent translation) ]
  */
 import { Vec2, gazeOffset, headTarget, lidBottomY, browOffset, RigLimits } from "./puppetMath";
+import type { MouthAnchors, MouthGeom } from "./mouth/mouthMath";
+import type { MouthAssets } from "./mouth/mouthLayers";
+import { drawMouth } from "./mouth/MouthRenderer";
 
 /**
  * Structural 2D context: satisfied by both the browser CanvasRenderingContext2D and
@@ -19,6 +22,11 @@ import { Vec2, gazeOffset, headTarget, lidBottomY, browOffset, RigLimits } from 
 export interface Ctx2D {
   canvas: { width: number; height: number };
   fillStyle: unknown;
+  strokeStyle: unknown;
+  lineWidth: number;
+  lineCap: string;
+  globalAlpha: number;
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): { addColorStop(o: number, c: string): void };
   clearRect(x: number, y: number, w: number, h: number): void;
   fillRect(x: number, y: number, w: number, h: number): void;
   save(): void;
@@ -27,8 +35,14 @@ export interface Ctx2D {
   rotate(rad: number): void;
   scale(x: number, y: number): void;
   beginPath(): void;
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number): void;
+  closePath(): void;
   ellipse(x: number, y: number, rx: number, ry: number, rot: number, sa: number, ea: number, ccw?: boolean): void;
   clip(): void;
+  stroke(): void;
+  fill(): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   drawImage(img: any, ...args: number[]): void;
 }
@@ -47,15 +61,17 @@ export interface RigManifest {
   neck_pivot: [number, number];
   eyes: { L: EyeRig; R: EyeRig };
   limits: RigLimits;
+  mouth: MouthAnchors;
 }
 
 export interface RigAssets {
   body: CanvasImageSource; bodyW: number; bodyH: number;
   neck: CanvasImageSource;
-  headBase: CanvasImageSource;
+  headBase: CanvasImageSource; // mouthless face base (v0.4+)
   iris: { L: CanvasImageSource; R: CanvasImageSource };
   lid: { L: CanvasImageSource; R: CanvasImageSource };
   brow: { L: CanvasImageSource; R: CanvasImageSource };
+  mouth: MouthAssets | null;
   sizes: Record<string, [number, number]>;
 }
 
@@ -66,6 +82,7 @@ export interface PuppetParams {
   headRot: number;     // deg
   headDx: number; headDy: number;
   breathPhase: number; // seconds
+  mouth: MouthGeom | null; // computed mouth geometry (null = no mouth rig)
 }
 
 export interface View { scale: number; ox: number; oy: number }
@@ -155,6 +172,11 @@ export function renderPuppetFrame(
     const broy = browOffset(p.browRaise, man.limits).y;
     ctx.drawImage(assets.brow[side], S(bx0), T(by0 + broy), bw * k, bh * k);
   });
+
+  // mouth component (v0.4): jaw patch → closed-lips crossfade → clipped cavity
+  if (p.mouth && assets.mouth) {
+    drawMouth(ctx, { S, T, k }, man.mouth, p.mouth, assets.mouth);
+  }
 
   ctx.restore();
 }

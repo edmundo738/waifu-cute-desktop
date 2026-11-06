@@ -81,7 +81,10 @@ export default function App() {
       renderer?.setPose(p);
       if (t) {
         pushLog(`trigger:${t} -> pose:${p}`);
-        if (renderer instanceof PuppetRenderer) renderer.setFaceParams(FACE_BY_TRIGGER[t]);
+        if (renderer instanceof PuppetRenderer) {
+          renderer.setFaceParams(FACE_BY_TRIGGER[t]);
+          if (t === "talk") renderer.setSpeech("Olá! A minha boca agora mexe mesmo: camadas, máscaras e mandíbula, tudo feito à mão.");
+        }
       } else if (renderer instanceof PuppetRenderer) {
         renderer.setFaceParams({ browRaise: 0, gazeBias: { x: 0, y: 0 } });
       }
@@ -201,6 +204,7 @@ export default function App() {
     setChat((c) => [...c, { who: "her", text: reply }]);
     const r = reactTo(reply);
     if (r) smRef.current?.trigger(r);
+    if (rendererRef.current instanceof PuppetRenderer) rendererRef.current.setSpeech(reply);
     smRef.current?.trigger("talk");
     pushLog(offline ? "brain offline → canned reply (honest fallback)" : `brain reply via ${brain?.model ?? "local LLM"}`);
   };

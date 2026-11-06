@@ -40,6 +40,25 @@ Evidence labels: **FACT** (documented/source-verified) · **MEASURED** (assertio
   sentiment→reaction triggers, talk/viseme cycle during replies, and an honest canned-reply
   fallback labelled offline when the endpoint is unreachable.
 
+## v0.4 — Mouth Puppet (componente boca/mandíbula)
+
+Arquitectura (mesmo princípio dos olhos: camadas + máscaras + parâmetros):
+`head_base_nm` (face sem boca, edição cirúrgica, identidade mean 3.94/p95 12.67 fora da
+zona da boca) → `mouth_jaw` (lábio inferior + pele do queixo da arte ORIGINAL, alpha
+penado, transladado por jawDy ≤5.5 px, parado acima do contorno do queixo → sem linha
+fantasma) → `mouth_closed` (lábios originais em crossfade: repouso = pixeis do canon,
+critério 1 **MEASURED** mean|Δ|=5.06) → cavidade oral vectorial (clip mask: dentes em
+banda gradual ≤45 % da altura, língua só com o≥0.5 — nunca saem dos lábios, critérios 3/4)
+→ traço do lábio superior. Dois controlos independentes: abertura 0..1 (6 estados
+perceptuais) × forma CLOSED/A/I/U/E/O (vectores de parâmetros com blend, sem snaps).
+Mandíbula não é placa rígida: queixo/lábio descem com a abertura, cavidade cresce entre
+o lábio superior quase fixo e o lábio inferior descendente. Fala: timeline de vogais
+subtis a partir de texto (PT), ligada ao cérebro local e ao trigger talk.
+Ficheiros: `app/src/puppet/mouth/{mouthMath,mouthShapes,mouthLayers,jawController,
+MouthRenderer,mouthSelfTest}.ts`. Testes: 9 asserções novas + pixel-rest, **19/19 PASS**;
+evidência visual `mouth_shapes.png` (vogais reconhecíveis sem exagero) e `mouth_ramp.png`
+(transição suave) **[OBSERVED]**; olhos/cabeça intactos em `gaze_3x3.png` (critério 8).
+
 ## Reproducible commands
 ```bash
 cd app && npm install

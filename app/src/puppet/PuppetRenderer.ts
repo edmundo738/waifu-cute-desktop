@@ -1,6 +1,9 @@
 import { CompanionRenderer, PoseName, SPRITE_URL } from "../companion/types";
 import { RigManifest, RigAssets, computeView, renderPuppetFrame } from "./puppetRender";
 import { headTarget, smoothDamp, idleGaze, blinkValue, pointerToGaze } from "./puppetMath";
+import { JawController } from "./mouth/jawController";
+import { loadMouthAssets } from "./mouth/mouthLayers";
+import type { MouthShape } from "./mouth/mouthShapes";
 
 export const RIG_MANIFEST_URL = "/rig/manifest.json";
 const FIG_BOX: [number, number, number, number] = [470, 7, 789, 842];
@@ -40,6 +43,7 @@ export class PuppetRenderer implements CompanionRenderer {
   private faceFollow = false;
   private external = { x: 0, y: 0 };
   private lastExternal = -10;
+  private jaw = new JawController();
   private t = 0;
   private last = 0;
   private raf = 0;
@@ -66,13 +70,15 @@ export class PuppetRenderer implements CompanionRenderer {
         img.src = u;
       });
     const [body, neck, headBase, irisL, irisR, lidL, lidR, browL, browR] = await Promise.all([
-      load("/rig/body_base.png"), load("/rig/neck_patch.png"), load("/rig/head_base.png"),
+      load("/rig/body_base.png"), load("/rig/neck_patch.png"), load("/rig/head_base_nm.png"),
       load("/rig/iris_L.png"), load("/rig/iris_R.png"), load("/rig/lid_L.png"),
       load("/rig/lid_R.png"), load("/rig/brow_L.png"), load("/rig/brow_R.png"),
     ]);
+    const mouth = await loadMouthAssets(load);
     this.assets = {
       body, bodyW: body.width, bodyH: body.height, neck, headBase,
       iris: { L: irisL, R: irisR }, lid: { L: lidL, R: lidR }, brow: { L: browL, R: browR },
+      mouth,
       sizes: {
         headBase: [headBase.width, headBase.height],
         iris_L: [irisL.width, irisL.height], iris_R: [irisR.width, irisR.height],
@@ -125,6 +131,16 @@ export class PuppetRenderer implements CompanionRenderer {
     if (!on) this.lastExternal = -10;
   }
 
+  /** Mouth v0.4: speech driver (text → understated vowel timeline). */
+  setSpeech(text: string): void {
+    this.jaw.setSpeech(text, this.t);
+  }
+
+  /** Mouth v0.4: direct control (opening 0..1 + articulation shape). */
+  setMouthTarget(open: number, shape: MouthShape): void {
+    this.jaw.setTarget(open, shape);
+  }
+
   setFaceParams(p: FaceParams): void {
     if (p.browRaise !== undefined) this.browTarget = Math.max(-1, Math.min(1, p.browRaise));
     if (p.gazeBias) this.gazeBias = p.gazeBias;
@@ -171,6 +187,9 @@ export class PuppetRenderer implements CompanionRenderer {
 
     this.brow = smoothDamp(this.brow, this.browTarget, 8, dt);
 
+    // mouth: jaw controller (opening smoothing + shape blend + speech timeline)
+    this.jaw.step(dt, this.t);
+
     // blink scheduler (ANIMATION_SPEC #2 intervals)
     if (this.blinkStart < 0 && this.t > this.nextBlink) this.blinkStart = this.t;
     if (this.blinkStart >= 0) {
@@ -204,6 +223,7 @@ export class PuppetRenderer implements CompanionRenderer {
       headDx: this.head.dx,
       headDy: this.head.dy,
       breathPhase: this.breath,
+      mouth: this.jaw.geom(this.man.mouth),
     }, view, { w: canvas.width, h: canvas.height });
   }
 }

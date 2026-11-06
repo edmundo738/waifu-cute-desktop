@@ -24,10 +24,20 @@ coordinates in `app/public/rig/manifest.json` (pose pixel space, 1264×843).
 - Brow boxes: L (594,107)-(625,125) · R (638,109)-(671,127)
 - Head box (512,0)-(752,212) · neck pivot (630,198) · mouth box (615,158)-(646,176)
 
+## Mouth component layers (v0.4, verified)
+
+| Layer | Asset | Origin | Notes |
+|---|---|---|---|
+| face base (mouthless) | `rig/head_base_nm.png` | surgical edit of canon head | lips removed, skin/philtrum preserved |
+| jaw / lower-lip patch | `rig/mouth_jaw.png` | cut from canon art | feathered ellipse alpha; rides jawDy ≤5.5 px; stops above chin contour |
+| closed lips (rest) | `rig/mouth_closed.png` | cut from canon art | feathered rrect alpha; crossfades out as opening grows |
+| oral cavity + teeth + tongue | procedural vector | `MouthRenderer.ts` | clipped to cavity path; teeth ≤45 % cavity height; tongue only o≥0.5 |
+| upper-lip seam | procedural stroke | `MouthRenderer.ts` | anime line on cavity ceiling while open |
+
 ## Missing components (must be authored/cut later — NOT faked)
 
 - Lower-lid independent layer (currently part of face base)
-- Mouth interior / jaw / lip layers (talk rig) — visemes exist only as reference art
+- Mouth: corner asymmetry / smile curls, lip texture at large openings (procedural lips are minimal by design); viseme art sheets remain reference only
 - Hair sub-groups (puff crown, side tendrils, back mass) for secondary motion
 - Arm chains (upper/fore/hand) and torso split for gesture rigging
 - Eye highlights as separate layer (currently baked into iris sprite)
