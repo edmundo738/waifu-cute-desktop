@@ -1,0 +1,17 @@
+{
+  "skin_face": "#974d36",
+  "hair": "#1b0f0e",
+  "top_fabric": "#271c1c",
+  "trousers": "#2f2221",
+  "gold_hardware": "#b1613a",
+  "sneaker_sole": "#e1d2ca",
+  "background": "#eceae8",
+  "sample_counts": {
+    "skin": 3835,
+    "hair": 10618,
+    "top": 6940,
+    "trousers": 7914,
+    "gold": 40,
+    "sole": 1458
+  }
+}
