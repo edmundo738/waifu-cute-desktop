@@ -8,16 +8,19 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test:puppet": "tsx src/puppet/selftest.node.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.1.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.23.15",
     "typescript": "~5.6.2",
     "vite": "^6.0.5"
   }

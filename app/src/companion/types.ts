@@ -15,7 +15,7 @@ export type TriggerName =
   | "talk";      // TTS stream -> mouth preview (static renderer) / talk motion (Live2D)
 
 export interface CompanionRenderer {
-  readonly kind: "static" | "live2d";
+  readonly kind: "static" | "live2d" | "puppet";
   setPose(pose: PoseName): void;
   setGaze(x: number, y: number): void; // -1..1 normalized cursor position
   dispose(): void;

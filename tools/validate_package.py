@@ -29,6 +29,16 @@ REQUIRED_FILES = [
     "app/public/sprites/companion_neutral.png", "app/public/sprites/companion_happy.png",
     "app/public/sprites/companion_thinking.png", "app/public/sprites/companion_waving.png",
     "app/public/sprites/companion_surprised.png", "app/public/sprites/companion_playful.png",
+    "app/public/rig/manifest.json", "app/public/rig/head_base.png", "app/public/rig/body_base.png",
+    "app/public/rig/neck_patch.png", "app/public/rig/iris_L.png", "app/public/rig/iris_R.png",
+    "app/public/rig/lid_L.png", "app/public/rig/lid_R.png", "app/public/rig/brow_L.png",
+    "app/public/rig/brow_R.png",
+    "app/src/puppet/puppetMath.ts", "app/src/puppet/puppetRender.ts",
+    "app/src/puppet/PuppetRenderer.ts", "app/src/puppet/selftest.node.ts",
+    "app/test_out/gaze_3x3.png", "app/test_out/blink_strip.png", "app/test_out/combo_expressions.png",
+    "docs/EYE_ANIMATION_ARCHITECTURE.md", "docs/CHARACTER_LAYER_MAP.md",
+    "docs/ANIMATION_ENGINE_EVALUATION.md", "docs/EYE_TRACKING_SPECIFICATION.md",
+    "docs/HEAD_MOVEMENT_SPECIFICATION.md", "docs/IMPLEMENTATION_AND_TEST_REPORT.md",
     "README.md",
 ]
 PART_COUNT = 14

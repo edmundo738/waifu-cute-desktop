@@ -17,6 +17,10 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
 10. Runnable **companion stage skeleton** (`app/`): transparent sprite mattes, placeholder
     static renderer, reaction state machine, Tauri/browser event bridge, Live2D probe + lazy
     adapter; `npm run build` passes and the dev server serves sprites and the model probe correctly.
+11. **Component puppet v0.2** (eye/head/brow milestone M2–M4): clipped eyeball translation,
+    partial/full blink lids, independent brows, head with own limits/smoothing; headless
+    acceptance tests (`npm run test:puppet`) and evidence frames in `app/test_out/`;
+    default renderer in the app whenever `public/rig/manifest.json` is present.
 
 ## Partial
 1. **Viseme references are art guidance only**: `expressions/viseme_*.png` illustrate A/I/U/E/O

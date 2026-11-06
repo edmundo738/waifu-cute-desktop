@@ -1,0 +1,162 @@
+/**
+ * Shared Canvas2D renderer for the component puppet. Runs unchanged in the
+ * browser and in node (@napi-rs/canvas) — the self-test renders evidence frames
+ * with exactly this code.
+ *
+ * Draw order (back → front), head group transformed as one unit:
+ *   body_base → neck_patch → [ head_base (empty openings, no brows)
+ *     → iris L/R (clipped to opening ellipse, translated by clamped gaze)
+ *     → lid L/R  (clipped to opening, stretched downward by blink)
+ *     → brow L/R (independent translation) ]
+ */
+import { Vec2, gazeOffset, headTarget, lidBottomY, browOffset, RigLimits } from "./puppetMath";
+
+/**
+ * Structural 2D context: satisfied by both the browser CanvasRenderingContext2D and
+ * @napi-rs/canvas' SKRSContext2D (their own types are not mutually assignable), so the
+ * exact same renderer code runs in the app and in the headless self-test.
+ */
+export interface Ctx2D {
+  canvas: { width: number; height: number };
+  fillStyle: unknown;
+  clearRect(x: number, y: number, w: number, h: number): void;
+  fillRect(x: number, y: number, w: number, h: number): void;
+  save(): void;
+  restore(): void;
+  translate(x: number, y: number): void;
+  rotate(rad: number): void;
+  scale(x: number, y: number): void;
+  beginPath(): void;
+  ellipse(x: number, y: number, rx: number, ry: number, rot: number, sa: number, ea: number, ccw?: boolean): void;
+  clip(): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  drawImage(img: any, ...args: number[]): void;
+}
+
+export interface EyeRig {
+  open_c: [number, number];
+  open_r: [number, number];
+  iris_box: [number, number, number, number];
+  lid_box: [number, number, number, number];
+  brow_box: [number, number, number, number];
+}
+
+export interface RigManifest {
+  head_box: [number, number, number, number];
+  neck_box: [number, number, number, number];
+  neck_pivot: [number, number];
+  eyes: { L: EyeRig; R: EyeRig };
+  limits: RigLimits;
+}
+
+export interface RigAssets {
+  body: CanvasImageSource; bodyW: number; bodyH: number;
+  neck: CanvasImageSource;
+  headBase: CanvasImageSource;
+  iris: { L: CanvasImageSource; R: CanvasImageSource };
+  lid: { L: CanvasImageSource; R: CanvasImageSource };
+  brow: { L: CanvasImageSource; R: CanvasImageSource };
+  sizes: Record<string, [number, number]>;
+}
+
+export interface PuppetParams {
+  gaze: Vec2;          // smoothed, -1..1
+  blink: number;       // 0..1 (partial allowed)
+  browRaise: number;   // -1..1
+  headRot: number;     // deg
+  headDx: number; headDy: number;
+  breathPhase: number; // seconds
+}
+
+export interface View { scale: number; ox: number; oy: number }
+
+export function computeView(canvasW: number, canvasH: number, figBox: [number, number, number, number]): View {
+  const fw = figBox[2] - figBox[0], fh = figBox[3] - figBox[1];
+  const scale = Math.min(canvasW / fw, canvasH / fh) * 0.96;
+  return {
+    scale,
+    ox: canvasW / 2 - (figBox[0] + fw / 2) * scale,
+    oy: canvasH / 2 - (figBox[1] + fh / 2) * scale,
+  };
+}
+
+const deg = Math.PI / 180;
+
+export function renderPuppetFrame(
+  ctx: Ctx2D,
+  assets: RigAssets,
+  man: RigManifest,
+  p: PuppetParams,
+  view: View,
+  clear: { w: number; h: number; backdrop?: string },
+): void {
+  const { scale: k, ox, oy } = view;
+  const S = (x: number) => ox + x * k;
+  const T = (y: number) => oy + y * k;
+  ctx.clearRect(0, 0, clear.w, clear.h);
+  if (clear.backdrop) {
+    ctx.fillStyle = clear.backdrop;
+    ctx.fillRect(0, 0, clear.w, clear.h);
+  }
+
+  // breathing: whole-figure micro scale anchored at the feet
+  const breathe = 1 + 0.008 * Math.sin((p.breathPhase * 2 * Math.PI) / 3.2);
+  ctx.save();
+  ctx.translate(S(630), T(842));
+  ctx.scale(breathe, breathe);
+  ctx.translate(-S(630), -T(842));
+  ctx.drawImage(assets.body, S(0), T(0), assets.bodyW * k, assets.bodyH * k);
+  ctx.drawImage(assets.neck, S(man.neck_box[0]), T(man.neck_box[1]),
+    (man.neck_box[2] - man.neck_box[0]) * k, (man.neck_box[3] - man.neck_box[1]) * k);
+  ctx.restore();
+
+  // ---- head group ----
+  const [px, py] = man.neck_pivot;
+  ctx.save();
+  ctx.translate(S(px) + p.headDx * k, T(py) + (p.headDy + 0.8 * Math.sin((p.breathPhase * 2 * Math.PI) / 3.2)) * k);
+  ctx.rotate(p.headRot * deg);
+  ctx.translate(-S(px), -T(py));
+
+  const [hx0, hy0] = man.head_box;
+  const [hw, hh] = assets.sizes.headBase;
+  ctx.drawImage(assets.headBase, S(hx0), T(hy0), hw * k, hh * k);
+
+  const off = gazeOffset(p.gaze, man.limits);
+  (["L", "R"] as const).forEach((side) => {
+    const e = man.eyes[side];
+    const [cx, cy] = e.open_c;
+    const [rx, ry] = e.open_r;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(S(cx), T(cy), rx * k, ry * k, 0, 0, Math.PI * 2);
+    ctx.clip();
+
+    // eyeball/iris assembly behind the lids, clamped translation
+    const [iw, ih] = assets.sizes["iris_" + side];
+    ctx.drawImage(assets.iris[side],
+      S(cx + off.x - iw / 2), T(cy + off.y - ih / 2), iw * k, ih * k);
+
+    // upper lid: stretched skin+lash band sliding down inside the opening
+    const b = p.blink;
+    if (b > 0.001) {
+      const [lx0, ly0, lx1, ly1] = e.lid_box;
+      const bottom = lidBottomY(b, { y0: ly0, y1: ly1 }, cy, ry);
+      const [lw, lh] = assets.sizes["lid_" + side];
+      ctx.drawImage(assets.lid[side],
+        S(lx0), T(ly0), (lx1 - lx0) * k, (bottom - ly0) * k);
+      void lw; void lh;
+    }
+    ctx.restore();
+
+    // independent brow component
+    const [bw, bh] = assets.sizes["brow_" + side];
+    const [bx0, by0] = e.brow_box;
+    const broy = browOffset(p.browRaise, man.limits).y;
+    ctx.drawImage(assets.brow[side], S(bx0), T(by0 + broy), bw * k, bh * k);
+  });
+
+  ctx.restore();
+}
+
+export { headTarget };

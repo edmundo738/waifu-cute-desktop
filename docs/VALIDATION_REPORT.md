@@ -1,6 +1,6 @@
 # Validation Report — Stage E
 
-Generated: 2026-11-06T07:47:01+00:00  
+Generated: 2026-11-06T08:27:28+00:00  
 Result: **PASS**
 
 | Deliverable | Size | Detail |
@@ -44,7 +44,7 @@ Result: **PASS**
 | docs/TECHNICAL_INSTRUCTIONS.md | 4 KB |  |
 | docs/LIMITATIONS.md | 4 KB |  |
 | app/package.json | 1 KB | json ok |
-| app/src/App.tsx | 6 KB |  |
+| app/src/App.tsx | 9 KB |  |
 | app/src/companion/staticRenderer.ts | 3 KB |  |
 | app/src/companion/stateMachine.ts | 2 KB |  |
 | app/src/companion/bridge.ts | 2 KB |  |
@@ -56,6 +56,29 @@ Result: **PASS**
 | app/public/sprites/companion_waving.png | 416 KB | 293x838 RGBA |
 | app/public/sprites/companion_surprised.png | 493 KB | 341x837 RGBA |
 | app/public/sprites/companion_playful.png | 528 KB | 372x843 RGBA |
+| app/public/rig/manifest.json | 1 KB | json ok |
+| app/public/rig/head_base.png | 99 KB | 240x212 RGBA |
+| app/public/rig/body_base.png | 1374 KB | 1264x843 RGBA |
+| app/public/rig/neck_patch.png | 18 KB | 93x85 RGBA |
+| app/public/rig/iris_L.png | 1 KB | 17x16 RGBA |
+| app/public/rig/iris_R.png | 1 KB | 17x16 RGBA |
+| app/public/rig/lid_L.png | 1 KB | 29x9 RGBA |
+| app/public/rig/lid_R.png | 1 KB | 29x9 RGBA |
+| app/public/rig/brow_L.png | 1 KB | 31x18 RGBA |
+| app/public/rig/brow_R.png | 1 KB | 33x18 RGBA |
+| app/src/puppet/puppetMath.ts | 3 KB |  |
+| app/src/puppet/puppetRender.ts | 5 KB |  |
+| app/src/puppet/PuppetRenderer.ts | 7 KB |  |
+| app/src/puppet/selftest.node.ts | 7 KB |  |
+| app/test_out/gaze_3x3.png | 801 KB | 1560x1920 RGBA |
+| app/test_out/blink_strip.png | 891 KB | 520x3200 RGBA |
+| app/test_out/combo_expressions.png | 267 KB | 1560x640 RGBA |
+| docs/EYE_ANIMATION_ARCHITECTURE.md | 3 KB |  |
+| docs/CHARACTER_LAYER_MAP.md | 2 KB |  |
+| docs/ANIMATION_ENGINE_EVALUATION.md | 3 KB |  |
+| docs/EYE_TRACKING_SPECIFICATION.md | 2 KB |  |
+| docs/HEAD_MOVEMENT_SPECIFICATION.md | 1 KB |  |
+| docs/IMPLEMENTATION_AND_TEST_REPORT.md | 4 KB |  |
 | README.md | 4 KB |  |
 | layers/parts/*.png | 14 files | part crops |
 | layers/waifu_companion_scaffold.psd read-back | ok | 14 layers, canvas 1264x843 |

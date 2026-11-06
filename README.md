@@ -23,7 +23,7 @@ animated desktop companion on Windows 11 (Tauri 2 + React + TypeScript + Live2D 
 | `live2d/` | `LIVE2D_PREPARATION.md` (parts tree, parameters, pipeline) + `LICENSE_REVIEW.md` | ✅ docs complete (rigging = manual, Cubism Editor) |
 | `docs/` | `CHARACTER_DESIGN.md`, `TECHNICAL_INSTRUCTIONS.md`, `LIMITATIONS.md`, `VALIDATION_REPORT.md` | ✅ complete |
 | `tools/` | Reproducible scripts: `compose_sheets.py`, `build_psd_scaffold.py`, `validate_package.py` | ✅ complete |
-| `app/` | Companion stage skeleton: React + TS + Vite, transparent sprites, static placeholder renderer, Live2D probe/adapter, Tauri 2 config | ✅ web build verified (Tauri shell not compiled here) |
+| `app/` | Companion stage: React + TS + Vite, **component puppet renderer** (eye/head/brow rig with clip masks, limits, smoothing), static fallback, Live2D probe/adapter, Tauri 2 config | ✅ puppet headless-tested + browser build verified (Tauri shell not compiled here) |
 
 ## The character in one paragraph
 
@@ -50,8 +50,14 @@ Requires Python 3 with `pillow`, `numpy` and `pytoshop` (`pip install pillow num
 
 - The poses and expressions are **static reference illustrations**, not animation.
 - `layers/waifu_companion_scaffold.psd` is a **layered separation plan** (14 verified
-  layers), *not* cut artwork: layers are rectangular crops of flat art and still need
-  artist matting + hidden-area completion before Live2D Cubism Editor.
-- No `.moc3`, no motion files, no runtime integration code exist yet.
+  layers), *not* cut artwork; the actually working rig layers live in `app/public/rig/`
+  (matte cut + one surgical head edit, identity-verified by pixel diff).
+- The `puppet` renderer **genuinely animates** eye/head/brow components (clip masks,
+  independent limits, smoothing, partial blinks) — verified by `npm run test:puppet` and
+  the evidence frames in `app/test_out/`. It is a custom micro-engine, **not** a
+  Live2D/Inochi2D model; mouth, hair groups and body components are later milestones.
+- No `.moc3`, no motion files exist; the Live2D adapter is a lazy-loaded placeholder that
+  stays dormant until a real licensed model is added.
 - No unlicensed Live2D SDK, model or third-party asset is included; see
-  [`live2d/LICENSE_REVIEW.md`](live2d/LICENSE_REVIEW.md).
+  [`live2d/LICENSE_REVIEW.md`](live2d/LICENSE_REVIEW.md) and
+  [`docs/ANIMATION_ENGINE_EVALUATION.md`](docs/ANIMATION_ENGINE_EVALUATION.md).
