@@ -1,10 +1,14 @@
 # v0.6 — Diagnóstico e Proposta de Arquitectura: Rig 2D em Camadas com Mesh + Ossos
 
-Estado: **PROPOSTA (aguarda aprovação do utilizador para implementar por etapas)**.
+Estado: **ETAPA 1 IMPLEMENTADA E TESTADA** (auto-rig v06 atrás de `?rig=v06`;
+v0.5 continua default até paridade em uso vivo). Etapas 2-5 aguardam sequência.
 Este documento cumpre a regra do mandato v0.6: *antes de alterar a arquitectura,
-apresentar diagnóstico + proposta + plano de migração*. Nada da arquitectura actual
-foi alterado ao escrever este documento; apenas correcções de bug (ver §2.3) e um
-protótipo de matemática de mesh isolado e testado (`app/src/puppet/mesh/meshMath.ts`).
+apresentar diagnóstico + proposta + plano de migração*. A implementação da Etapa 1
+segue exactamente o §3/§5: `tools/prep_stage1_sheet.py` (base anatómica contínua +
+arte oculta reconstruída), `app/src/puppet/mesh/meshRender.ts` (mesh + pesos +
+skinning + cadeia Root→Torso→Neck→Head), gates e evidência em
+`app/test_out/stage1_poses.png`; medições no relatório
+(`docs/IMPLEMENTATION_AND_TEST_REPORT.md`, secção v0.6 Stage 1).
 
 ---
 

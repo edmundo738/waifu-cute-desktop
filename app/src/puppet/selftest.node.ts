@@ -254,6 +254,129 @@ async function main(): Promise<void> {
   check("mesh skinning: 40° elbow bend keeps mesh continuous (no tears) and moves the limb",
     maxEdge <= REST_EDGE && tipMoved, `maxEdge=${maxEdge.toFixed(1)} (rest step 5) tipΔ=${Math.hypot(tipX - 100, tipY - 20).toFixed(1)}`);
 
+  // ---- v0.6 STAGE 1: continuous skinned sheet (Root→Torso→Neck→Head) ----
+  const [sheetImg, lowerImg] = await Promise.all([load("body_sheet.png"), load("body_lower.png")]);
+  const assetsV6: RigAssets = {
+    ...assets,
+    sheet: sheetImg, sheetW: sheetImg.width, sheetH: sheetImg.height,
+    lower: lowerImg, lowerW: lowerImg.width, lowerH: lowerImg.height,
+  };
+  const frameV6 = (p: Partial<PuppetParams>, backdrop = "#171310") => {
+    const canvas = createCanvas(CW, CH);
+    const ctx = canvas.getContext("2d");
+    renderPuppetFrame(ctx as never, assetsV6, man, {
+      gaze: { x: 0, y: 0 }, blink: 0, browRaise: 0,
+      headRot: 0, headDx: 0, headDy: 0, breathPhase: 0, mouth: geom0,
+      wink: 0, smile: 0, hair: { puff: { x: 0, y: 0 }, tL: { x: 0, y: 0 }, tR: { x: 0, y: 0 } }, ...p,
+    }, view, { w: CW, h: CH, backdrop });
+    return canvas;
+  };
+  const px = (x: number) => Math.round(view.ox + x * view.scale);
+  const py = (y: number) => Math.round(view.oy + y * view.scale);
+  const win = { x0: px(470), x1: px(790), y0: py(0), y1: py(384) };
+  const dataOf = (c: ReturnType<typeof createCanvas>) => c.getContext("2d").getImageData(0, 0, CW, CH).data;
+
+  // geometry audits need TRANSPARENT backdrop (alpha = character only)
+  const frameV6T = (p: Partial<PuppetParams>) => frameV6(p, "");
+  // (a) rest parity v0.6 vs v0.5: same visible art (hidden reconstruction stays hidden)
+  const r5 = dataOf(frame({}, view, CW, CH, ""));
+  const r6 = dataOf(frameV6T({}));
+  let dAcc = 0, dN = 0, xor = 0;
+  for (let y = win.y0; y < win.y1; y++) {
+    for (let x = win.x0; x < win.x1; x++) {
+      const i = (y * CW + x) * 4;
+      const a5 = r5[i + 3], a6 = r6[i + 3];
+      if ((a5 > 200) !== (a6 > 200)) { xor++; continue; }
+      if (a5 > 200) { dAcc += (Math.abs(r5[i] - r6[i]) + Math.abs(r5[i + 1] - r6[i + 1]) + Math.abs(r5[i + 2] - r6[i + 2])) / 3; dN++; }
+    }
+  }
+  check("v0.6 stage1: rest pose matches v0.5 composition (hidden art stays hidden)",
+    dAcc / dN <= 3 && xor <= 300, `mean|ΔRGB|=${(dAcc / dN).toFixed(2)} alphaXor=${xor} px`);
+
+  // (b) posed frames: no enclosed transparent holes (no tears/separation) in upper body
+  const holesIn = (d: Uint8Array): number => {
+    const w = win.x1 - win.x0, h = win.y1 - win.y0;
+    const open = new Uint8Array(w * h);   // transparent
+    const seen = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+      open[y * w + x] = d[((y + win.y0) * CW + (x + win.x0)) * 4 + 3] <= 8 ? 1 : 0;
+    const stack: number[] = [];
+    const push = (x: number, y: number) => {
+      const i = y * w + x;
+      if (open[i] && !seen[i]) { seen[i] = 1; stack.push(i); }
+    };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+    for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+    while (stack.length) {
+      const i = stack.pop()!;
+      const x = i % w, y = (i / w) | 0;
+      if (x > 0) push(x - 1, y);
+      if (x < w - 1) push(x + 1, y);
+      if (y > 0) push(x, y - 1);
+      if (y < h - 1) push(x, y + 1);
+    }
+    let holes = 0;
+    for (let i = 0; i < open.length; i++) if (open[i] && !seen[i]) holes++;
+    return holes;
+  };
+  const lean6T = frameV6T({ torsoRot: 6 });
+  const tilt8T = frameV6T({ headRot: 8 });
+  const combT = frameV6T({
+    torsoRot: 6, headRot: 8, headDx: 3, gaze: { x: 0.6, y: 0.2 }, smile: 0.5,
+    mouth: mouthGeometry(0.5, SHAPE_PARAMS.A, man.mouth, 0.5),
+  });
+  // baseline: rest already contains tiny enclosed pockets (eye-socket feather
+  // ring between iris clip and nm opening) — deformation must not ADD holes
+  const hR = holesIn(r6);
+  const hL = holesIn(dataOf(lean6T)), hT = holesIn(dataOf(tilt8T)), hC = holesIn(dataOf(combT));
+  check("v0.6 stage1: torso lean 6°, head tilt 8°, combined → no NEW tears/holes vs rest",
+    hL - hR <= 50 && hT - hR <= 50 && hC - hR <= 50,
+    `holes rest=${hR} lean=${hL} tilt=${hT} combo=${hC} (Δ≤50 px)`);
+
+  // (c) neck continuity: every row of the neck column band stays covered
+  const neckRows = (d: Uint8Array): number => {
+    let bad = 0;
+    for (let y = py(150); y < py(240); y++) {
+      let any = false;
+      for (let x = px(600); x < px(662); x++) if (d[(y * CW + x) * 4 + 3] > 8) { any = true; break; }
+      if (!any) bad++;
+    }
+    return bad;
+  };
+  const nT = neckRows(dataOf(tilt8T)), nC = neckRows(dataOf(combT));
+  check("v0.6 stage1: head tilt keeps neck connected (no head/neck separation)",
+    nT === 0 && nC === 0, `empty neck rows: tilt=${nT} combo=${nC}`);
+
+  // (d) the tilt actually moves the head (not a no-op): centroid of the whole
+  // head block (rows 0..190 pose), in pose px
+  const headCentroid = (d: Uint8Array): number => {
+    let sx = 0, n = 0;
+    for (let y = win.y0; y < py(190); y++)
+      for (let x = win.x0; x < win.x1; x++) if (d[(y * CW + x) * 4 + 3] > 200) { sx += x; n++; }
+    return sx / Math.max(1, n) / view.scale;
+  };
+  const shift = Math.abs(headCentroid(dataOf(tilt8T)) - headCentroid(r6));
+  check("v0.6 stage1: head tilt 8° moves the skull (deformation is real)", shift >= 10,
+    `head-block centroid Δ=${shift.toFixed(1)} pose px`);
+
+  // (e) performance proxy: posed skinned frames in node-canvas (software raster)
+  const t0 = performance.now();
+  for (let i = 0; i < 30; i++) {
+    frameV6({ torsoRot: 6, headRot: 8 * Math.sin(i / 5), headDx: 2, mouth: mouthGeometry(0.4, SHAPE_PARAMS.E, man.mouth, 0.4) });
+  }
+  const ms = (performance.now() - t0) / 30;
+  check("v0.6 stage1: posed skinned frame cost (node-canvas software raster proxy)", ms <= 16,
+    `mean ${ms.toFixed(2)} ms/frame (30 frames; rigid spans blit, only band tris skinned)`);
+
+  // evidence strip: rest | lean | tilt | combined on dark stage
+  const s1 = createCanvas(CW * 4, CH);
+  const s1c = s1.getContext("2d");
+  [frameV6({}), frameV6({ torsoRot: 6 }), frameV6({ headRot: 8 }), frameV6({
+    torsoRot: 6, headRot: 8, headDx: 3, gaze: { x: 0.6, y: 0.2 }, smile: 0.5,
+    mouth: mouthGeometry(0.5, SHAPE_PARAMS.A, man.mouth, 0.5),
+  })].forEach((c, i) => s1c.drawImage(c, i * CW, 0));
+  writeFileSync(OUT + "stage1_poses.png", s1.toBuffer("image/png"));
+
   // ---- v0.5: secondary motion, wink, smile ----
   const sm2 = new SecondaryMotion();
   let offMin = 0, off = 0;

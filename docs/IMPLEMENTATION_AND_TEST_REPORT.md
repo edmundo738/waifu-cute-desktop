@@ -101,6 +101,36 @@ evidência visual `mouth_shapes.png` (vogais reconhecíveis sem exagero) e `mout
   `stage_dark.png`. Architecture diagnosis + staged migration plan:
   `docs/RIG_ARCHITECTURE_PROPOSAL_v06.md` (proposal, awaiting approval).
 
+## v0.6 Stage 1 — continuous anatomical base + Root→Torso→Neck→Head (IMPLEMENTED, TESTED)
+Approved by the user after the proposal; implemented behind `?rig=v06` (v0.5
+renderer remains the default until parity is proven in live use).
+- **Prep** `tools/prep_stage1_sheet.py`: `rig/body_sheet.png` = ONE continuous
+  head+neck+upper-torso texture (body art + reconstructed HIDDEN art: skull-base
+  disc clipped to the proven neck silhouette + tapered neck-cylinder extension
+  behind the jaw + neck patch + no-mouth head) and `rig/body_lower.png` (body
+  below the waist cut at row 384, where the mesh's Root-weighted edge meets it).
+  Hidden art is invisible at rest by construction (MEASURED: rest parity vs v0.5
+  composition mean|ΔRGB|=0.34, alphaXor=278 px over 216k).
+- **Runtime** `app/src/puppet/mesh/meshRender.ts`: grid mesh (step 8) with
+  smoothstep blend bands (head→neck 190-215, neck→torso 215-255, torso→root
+  336-384); rigid row spans blit as single transformed drawImage; only band
+  triangles (~1.2k) go through per-triangle affine texture mapping with 0.7 px
+  clip expansion. Bone chain Root→Torso→Neck→Head with neck compensation
+  (neck = 0.35·headRot) so the jaw/neck junction flexes instead of tearing.
+- **Measured (selftest, 31/31 PASS)**: torso lean 6° / head tilt 8° / combined
+  add NO new enclosed holes vs rest (Δ≤50 px gate; rest baseline 121 px = the
+  pre-existing eye-socket feather ring, unrelated to deformation); neck column
+  stays connected on every row (0 empty rows); head-block centroid moves 14.5
+  pose px at 8° tilt (deformation is real, not a no-op); posed skinned frame
+  7.8 ms mean in node-canvas software raster (rigid spans + band tris only).
+- **Evidence**: `app/test_out/stage1_poses.png` (rest | lean 6° | tilt 8° |
+  combined with gaze+smile+open mouth, dark stage) — head/neck/torso read as one
+  continuous body in every panel.
+- Known stage-1 scope notes (documented, not defects): the waist/forearm blend
+  band shows a soft wobble under torso lean (arms get their own bones in stage
+  2, which removes it); eye-socket feather ring exists since v0.4 and is used
+  as the holes baseline.
+
 ## Reproducible commands
 ```bash
 cd app && npm install

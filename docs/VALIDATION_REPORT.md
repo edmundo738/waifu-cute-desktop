@@ -1,6 +1,6 @@
 # Validation Report — Stage E
 
-Generated: 2026-11-06T11:13:18+00:00  
+Generated: 2026-11-06T11:44:26+00:00  
 Result: **PASS**
 
 | Deliverable | Size | Detail |
@@ -42,7 +42,7 @@ Result: **PASS**
 | live2d/LICENSE_REVIEW.md | 3 KB |  |
 | docs/CHARACTER_DESIGN.md | 4 KB |  |
 | docs/TECHNICAL_INSTRUCTIONS.md | 4 KB |  |
-| docs/LIMITATIONS.md | 5 KB |  |
+| docs/LIMITATIONS.md | 6 KB |  |
 | app/package.json | 1 KB | json ok |
 | app/src/App.tsx | 14 KB |  |
 | app/src/companion/staticRenderer.ts | 4 KB |  |
@@ -56,9 +56,9 @@ Result: **PASS**
 | app/public/sprites/companion_waving.png | 416 KB | 293x838 RGBA |
 | app/public/sprites/companion_surprised.png | 493 KB | 341x837 RGBA |
 | app/public/sprites/companion_playful.png | 528 KB | 372x843 RGBA |
-| app/public/rig/manifest.json | 1 KB | json ok |
+| app/public/rig/manifest.json | 3 KB | json ok |
 | app/public/rig/head_base.png | 99 KB | 240x212 RGBA |
-| app/public/rig/body_base.png | 1374 KB | 1264x843 RGBA |
+| app/public/rig/body_base.png | 1370 KB | 1264x843 RGBA |
 | app/public/rig/neck_patch.png | 18 KB | 93x85 RGBA |
 | app/public/rig/iris_L.png | 1 KB | 17x16 RGBA |
 | app/public/rig/iris_R.png | 1 KB | 17x16 RGBA |
@@ -66,35 +66,41 @@ Result: **PASS**
 | app/public/rig/lid_R.png | 1 KB | 29x9 RGBA |
 | app/public/rig/brow_L.png | 1 KB | 31x18 RGBA |
 | app/public/rig/brow_R.png | 1 KB | 33x18 RGBA |
-| app/public/rig/head_base_nm.png | 71 KB | 240x212 RGBA |
+| app/public/rig/head_base_nm.png | 70 KB | 240x212 RGBA |
 | app/public/rig/mouth_closed.png | 17 KB | 166x78 RGBA |
 | app/public/rig/mouth_jaw.png | 22 KB | 221x60 RGBA |
 | app/public/rig/hair_puff.png | 429 KB | 717x432 RGBA |
-| app/public/rig/hair_tendril_L.png | 120 KB | 175x404 RGBA |
-| app/public/rig/hair_tendril_R.png | 112 KB | 156x414 RGBA |
+| app/public/rig/hair_tendril_L.png | 119 KB | 175x404 RGBA |
+| app/public/rig/hair_tendril_R.png | 110 KB | 156x414 RGBA |
+| app/public/rig/body_sheet.png | 148 KB | 320x384 RGBA |
+| app/public/rig/body_lower.png | 1368 KB | 1264x843 RGBA |
 | app/src/puppet/puppetMath.ts | 5 KB |  |
-| app/src/puppet/puppetRender.ts | 8 KB |  |
-| app/src/puppet/PuppetRenderer.ts | 11 KB |  |
-| app/src/puppet/selftest.node.ts | 18 KB |  |
+| app/src/puppet/puppetRender.ts | 10 KB |  |
+| app/src/puppet/PuppetRenderer.ts | 12 KB |  |
+| app/src/puppet/selftest.node.ts | 24 KB |  |
 | app/src/puppet/mouth/mouthMath.ts | 4 KB |  |
 | app/src/puppet/mouth/mouthShapes.ts | 3 KB |  |
 | app/src/puppet/mouth/mouthLayers.ts | 2 KB |  |
 | app/src/puppet/mouth/jawController.ts | 2 KB |  |
 | app/src/puppet/mouth/MouthRenderer.ts | 5 KB |  |
 | app/src/puppet/mouth/mouthSelfTest.ts | 7 KB |  |
-| app/test_out/gaze_3x3.png | 807 KB | 1560x1920 RGBA |
-| app/test_out/blink_strip.png | 894 KB | 520x3200 RGBA |
-| app/test_out/combo_expressions.png | 269 KB | 1560x640 RGBA |
-| app/test_out/mouth_shapes.png | 141 KB | 612x360 RGBA |
+| app/test_out/gaze_3x3.png | 800 KB | 1560x1920 RGBA |
+| app/test_out/blink_strip.png | 885 KB | 520x3200 RGBA |
+| app/test_out/combo_expressions.png | 266 KB | 1560x640 RGBA |
+| app/test_out/mouth_shapes.png | 140 KB | 612x360 RGBA |
 | app/test_out/mouth_ramp.png | 139 KB | 612x360 RGBA |
-| app/test_out/hair_sway.png | 508 KB | 1440x424 RGBA |
-| app/test_out/wink_smile.png | 147 KB | 1200x285 RGBA |
+| app/test_out/hair_sway.png | 504 KB | 1440x424 RGBA |
+| app/test_out/wink_smile.png | 146 KB | 1200x285 RGBA |
+| app/test_out/stage_dark.png | 179 KB | 520x640 RGBA |
+| app/test_out/stage1_poses.png | 373 KB | 2080x640 RGBA |
+| app/test_out/BUG_white_slab_v05.png | 66 KB | 369x235 RGBA |
 | docs/EYE_ANIMATION_ARCHITECTURE.md | 3 KB |  |
 | docs/CHARACTER_LAYER_MAP.md | 3 KB |  |
+| docs/RIG_ARCHITECTURE_PROPOSAL_v06.md | 12 KB |  |
 | docs/ANIMATION_ENGINE_EVALUATION.md | 3 KB |  |
 | docs/EYE_TRACKING_SPECIFICATION.md | 2 KB |  |
 | docs/HEAD_MOVEMENT_SPECIFICATION.md | 1 KB |  |
-| docs/IMPLEMENTATION_AND_TEST_REPORT.md | 7 KB |  |
+| docs/IMPLEMENTATION_AND_TEST_REPORT.md | 11 KB |  |
 | README.md | 5 KB |  |
 | layers/parts/*.png | 14 files | part crops |
 | layers/waifu_companion_scaffold.psd read-back | ok | 14 layers, canvas 1264x843 |

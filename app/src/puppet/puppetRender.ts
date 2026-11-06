@@ -13,6 +13,7 @@ import { Vec2, gazeOffset, headTarget, lidBottomY, browOffset, clamp, RigLimits 
 import type { MouthAnchors, MouthGeom } from "./mouth/mouthMath";
 import type { MouthAssets } from "./mouth/mouthLayers";
 import { drawMouth } from "./mouth/MouthRenderer";
+import { buildSkinMesh, drawSkinnedSheet, rotMat, mulMat, ID_MAT, Mat, SkinMesh } from "./mesh/meshRender";
 
 /**
  * Structural 2D context: satisfied by both the browser CanvasRenderingContext2D and
@@ -40,6 +41,7 @@ export interface Ctx2D {
   quadraticCurveTo(cx: number, cy: number, x: number, y: number): void;
   closePath(): void;
   ellipse(x: number, y: number, rx: number, ry: number, rot: number, sa: number, ea: number, ccw?: boolean): void;
+  transform(a: number, b: number, c: number, d: number, e: number, f: number): void;
   clip(): void;
   stroke(): void;
   fill(): void;
@@ -63,6 +65,14 @@ export interface HairRig {
   lag: { puff: number; tendril: number };
 }
 
+export interface RigV06 {
+  sheet_box: [number, number, number, number];
+  waist_y: number;
+  step: number;
+  bones: { root: [number, number]; torso: [number, number]; neck: [number, number]; head: [number, number] };
+  neck_comp: number;
+}
+
 export interface RigManifest {
   head_box: [number, number, number, number];
   neck_box: [number, number, number, number];
@@ -71,12 +81,17 @@ export interface RigManifest {
   limits: RigLimits;
   mouth: MouthAnchors;
   hair: HairRig;
+  rigv06?: RigV06;
 }
 
 export interface RigAssets {
   body: CanvasImageSource; bodyW: number; bodyH: number;
   neck: CanvasImageSource;
   headBase: CanvasImageSource; // mouthless face base (v0.4+)
+  /** v0.6 stage 1: continuous head+neck+upper-torso sheet + lower body sprite */
+  sheet?: CanvasImageSource; sheetW?: number; sheetH?: number;
+  lower?: CanvasImageSource; lowerW?: number; lowerH?: number;
+  mesh?: SkinMesh;
   iris: { L: CanvasImageSource; R: CanvasImageSource };
   lid: { L: CanvasImageSource; R: CanvasImageSource };
   brow: { L: CanvasImageSource; R: CanvasImageSource };
@@ -96,6 +111,7 @@ export interface PuppetParams {
   wink: number;          // 0..1 right-eye wink (per-eye lid control)
   smile: number;         // -1..1 expression: corner lift + lid squint
   hair: { puff: Vec2; tL: Vec2; tR: Vec2 } | null; // secondary-motion offsets
+  torsoRot?: number;     // v0.6: upper-body lean in deg about the waist pivot
 }
 
 export interface View { scale: number; ox: number; oy: number }
@@ -131,25 +147,54 @@ export function renderPuppetFrame(
 
   // breathing: whole-figure micro scale anchored at the feet
   const breathe = 1 + 0.008 * Math.sin((p.breathPhase * 2 * Math.PI) / 3.2);
+  const breathDy = 0.8 * Math.sin((p.breathPhase * 2 * Math.PI) / 3.2);
+  const v06 = !!(assets.sheet && assets.lower && man.rigv06);
+  const tRot = p.torsoRot ?? 0;
+  const comp = man.rigv06?.neck_comp ?? 0.35;
   ctx.save();
   ctx.translate(S(630), T(842));
   ctx.scale(breathe, breathe);
   ctx.translate(-S(630), -T(842));
-  ctx.drawImage(assets.body, S(0), T(0), assets.bodyW * k, assets.bodyH * k);
-  ctx.drawImage(assets.neck, S(man.neck_box[0]), T(man.neck_box[1]),
-    (man.neck_box[2] - man.neck_box[0]) * k, (man.neck_box[3] - man.neck_box[1]) * k);
+  if (v06 && man.rigv06) {
+    // continuous anatomical sheet, skinned by the bone chain (no sprite seams)
+    ctx.drawImage(assets.lower!, S(0), T(0), assets.lowerW! * k, assets.lowerH! * k);
+    const bn = man.rigv06.bones;
+    const mT = rotMat(bn.torso[0], bn.torso[1], tRot);
+    const mN = mulMat(mT, rotMat(bn.neck[0], bn.neck[1], comp * p.headRot));
+    const mH = mulMat(mN, mulMat(rotMat(bn.head[0], bn.head[1], (1 - comp) * p.headRot),
+      [1, 0, 0, 1, p.headDx, p.headDy + breathDy]));
+    const mats: Mat[] = [ID_MAT, mT, mN, mH];
+    if (!assets.mesh) assets.mesh = buildSkinMesh(assets.sheetW!, assets.sheetH!, man.rigv06.step);
+    drawSkinnedSheet(ctx, { img: assets.sheet, w: assets.sheetW!, h: assets.sheetH! },
+      assets.mesh, mats, view, [man.rigv06.sheet_box[0], man.rigv06.sheet_box[1]]);
+  } else {
+    ctx.drawImage(assets.body, S(0), T(0), assets.bodyW * k, assets.bodyH * k);
+    ctx.drawImage(assets.neck, S(man.neck_box[0]), T(man.neck_box[1]),
+      (man.neck_box[2] - man.neck_box[0]) * k, (man.neck_box[3] - man.neck_box[1]) * k);
+  }
   ctx.restore();
 
   // ---- head group ----
   const [px, py] = man.neck_pivot;
   ctx.save();
-  ctx.translate(S(px) + p.headDx * k, T(py) + (p.headDy + 0.8 * Math.sin((p.breathPhase * 2 * Math.PI) / 3.2)) * k);
-  ctx.rotate(p.headRot * deg);
-  ctx.translate(-S(px), -T(py));
+  if (v06 && man.rigv06) {
+    // overlay transform = Head bone global matrix (matches the skinned mesh head)
+    const bn = man.rigv06.bones;
+    ctx.translate(S(bn.torso[0]), T(bn.torso[1])); ctx.rotate(tRot * deg); ctx.translate(-S(bn.torso[0]), -T(bn.torso[1]));
+    ctx.translate(S(bn.neck[0]), T(bn.neck[1])); ctx.rotate(comp * p.headRot * deg); ctx.translate(-S(bn.neck[0]), -T(bn.neck[1]));
+    ctx.translate(S(bn.head[0]), T(bn.head[1])); ctx.rotate((1 - comp) * p.headRot * deg); ctx.translate(-S(bn.head[0]), -T(bn.head[1]));
+    ctx.translate(p.headDx * k, (p.headDy + breathDy) * k);
+  } else {
+    ctx.translate(S(px) + p.headDx * k, T(py) + (p.headDy + breathDy) * k);
+    ctx.rotate(p.headRot * deg);
+    ctx.translate(-S(px), -T(py));
+  }
 
-  const [hx0, hy0] = man.head_box;
-  const [hw, hh] = assets.sizes.headBase;
-  ctx.drawImage(assets.headBase, S(hx0), T(hy0), hw * k, hh * k);
+  if (!v06) {
+    const [hx0, hy0] = man.head_box;
+    const [hw, hh] = assets.sizes.headBase;
+    ctx.drawImage(assets.headBase, S(hx0), T(hy0), hw * k, hh * k);
+  }
 
   // hair puff overlay (secondary motion; overlap+feather hides the double-draw)
   if (p.hair && assets.hair) {

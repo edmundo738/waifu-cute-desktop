@@ -39,6 +39,7 @@ export class PuppetRenderer implements CompanionRenderer {
   private nextBlink = 2.0;
   private blink = 0;
   private breath = 0;
+  private torsoNow = 0;
   private lastPointer = -10;
   private faceFollow = false;
   private external = { x: 0, y: 0 };
@@ -93,8 +94,16 @@ export class PuppetRenderer implements CompanionRenderer {
     const [hairPuff, hairTL, hairTR] = await Promise.all([
       load("/rig/hair_puff.png"), load("/rig/hair_tendril_L.png"), load("/rig/hair_tendril_R.png"),
     ]);
+    // v0.6 stage-1 rig (continuous skinned sheet) behind ?rig=v06 until parity proven
+    const useV06 = new URLSearchParams(window.location.search).get("rig") === "v06";
+    let sheet: HTMLImageElement | undefined, lower: HTMLImageElement | undefined;
+    if (useV06) {
+      [sheet, lower] = await Promise.all([load("/rig/body_sheet.png"), load("/rig/body_lower.png")]);
+    }
     this.assets = {
       body, bodyW: body.width, bodyH: body.height, neck, headBase,
+      sheet, sheetW: sheet?.width, sheetH: sheet?.height,
+      lower, lowerW: lower?.width, lowerH: lower?.height,
       iris: { L: irisL, R: irisR }, lid: { L: lidL, R: lidR }, brow: { L: browL, R: browR },
       mouth,
       hair: { puff: hairPuff, tL: hairTL, tR: hairTR },
@@ -240,6 +249,10 @@ export class PuppetRenderer implements CompanionRenderer {
     };
     this.hairNow = hair;
 
+    // v0.6: subtle continuous upper-body lean (the skinned sheet deforms it;
+    // sprite-seam v0.5 rig ignores torsoRot entirely)
+    this.torsoNow = 0.9 * Math.sin(this.t * 0.45);
+
     // blink scheduler (ANIMATION_SPEC #2 intervals)
     if (this.blinkStart < 0 && this.t > this.nextBlink) this.blinkStart = this.t;
     if (this.blinkStart >= 0) {
@@ -277,6 +290,7 @@ export class PuppetRenderer implements CompanionRenderer {
       wink: blinkValue(this.t - this.winkStart, 0.45),
       smile: this.smile,
       hair: this.hairNow,
+      torsoRot: this.torsoNow,
     }, view, { w: canvas.width, h: canvas.height });
   }
 }

@@ -60,6 +60,11 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
    under the sneakers and a pale rim-light on the curls; on dark/transparent stages these read as
    bright marks. They are original art (reference sheets), not alpha leaks — the automated leak gate
    measures 0. Any *new* bright fringe would fail the gate (`selftest.node.ts`).
+8. **v0.6 stage-1 scope**: the skinned rig (`?rig=v06`) articulates Root→Torso→Neck→Head only.
+   Under torso lean, the waist/forearm blend band (rows 336-384) shows a soft wobble because arms
+   still share the torso bone — stage 2 gives them clavicle→hand chains and removes it. The v0.5
+   renderer stays the default until live parity is confirmed. Eyes/mouth/hair overlays ride the
+   Head bone unchanged, so all v0.5 features work identically in v06 mode.
 
 ## Explicit non-claims
 - No image in this package is animated, rigged or layered beyond the documented scaffold.
