@@ -76,6 +76,31 @@ evidência visual `mouth_shapes.png` (vogais reconhecíveis sem exagero) e `mout
   playful 0.5+wink…) and to chat-reply sentiment. Evidence `wink_smile.png`.
 - Self-test **23/23 PASS**; eyes/head/mouth regressions clean.
 
+## v0.5.1 — white-slab bug class fixed (dark-stage safety) + mesh prototype
+- **Bug (user-reported, image-5)**: white slab behind the head on dark stages.
+  Root cause: cut sprites inherited the opaque generated-edit background inside
+  feather masks (invisible on the light test backdrop). Same class hit the
+  ground-shadow zone of `body_base.png` (semi-transparent background-coloured px).
+- **Fix**: every cut alpha = shape mask × proven silhouette (`head_base.png`);
+  `head_base_nm.png` alpha re-derived from the proven silhouette; bright
+  semi-transparent background pixels purged from all cuts (teeth/sole whites
+  preserved by opacity guard); `head_base_nm` edge halo purged with a
+  silhouette-edge guard.
+- **Regression gates (selftest)**: per-asset alpha leak vs proven silhouette
+  (1 px dilation for feather rings) and composed-head audit above shoulders on
+  a transparent backdrop — MEASURED `assetLeak=0 composedLeak=0 missing=0`;
+  dark-stage evidence `app/test_out/stage_dark.png` (#171310); pre-fix proof
+  `app/test_out/BUG_white_slab_v05.png`. Canon note: the light ground splash
+  strokes under the sneakers and the curl rim-light visible on dark stages are
+  original art from the reference sheets, not leaks (gate = 0).
+- **Mesh+skinning prototype** `app/src/puppet/mesh/meshMath.ts` (grid mesh,
+  smoothstep-normalised bone weights, linear-blend skinning): 3 new checks —
+  weights normalised; rest pose exact identity (max|Δ|=0); 40° elbow bend
+  continuous (maxEdge 6.7 vs rest step 5) with limb tip moving 34.9 px.
+- Self-test now **26/26 PASS**; `npm run build` clean; validator includes
+  `stage_dark.png`. Architecture diagnosis + staged migration plan:
+  `docs/RIG_ARCHITECTURE_PROPOSAL_v06.md` (proposal, awaiting approval).
+
 ## Reproducible commands
 ```bash
 cd app && npm install

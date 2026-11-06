@@ -56,6 +56,10 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
    browser-verified; the Live2D renderer path is untested (no model exists to load).
 6. **Art-direction pass**: generated assets carry minor likeness drift between images (pendant, curl
    pattern). Compare against `poses/pose_reference_sheet.png` before promoting any new asset to canon.
+7. **Dark-stage appearance (v0.5.1)**: the canon art includes light painterly ground splash strokes
+   under the sneakers and a pale rim-light on the curls; on dark/transparent stages these read as
+   bright marks. They are original art (reference sheets), not alpha leaks — the automated leak gate
+   measures 0. Any *new* bright fringe would fail the gate (`selftest.node.ts`).
 
 ## Explicit non-claims
 - No image in this package is animated, rigged or layered beyond the documented scaffold.
