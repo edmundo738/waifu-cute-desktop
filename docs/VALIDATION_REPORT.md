@@ -1,6 +1,6 @@
 # Validation Report — Stage E
 
-Generated: 2026-11-06T09:31:51+00:00  
+Generated: 2026-11-06T10:15:21+00:00  
 Result: **PASS**
 
 | Deliverable | Size | Detail |
@@ -69,27 +69,32 @@ Result: **PASS**
 | app/public/rig/head_base_nm.png | 72 KB | 240x212 RGBA |
 | app/public/rig/mouth_closed.png | 17 KB | 166x78 RGBA |
 | app/public/rig/mouth_jaw.png | 22 KB | 221x60 RGBA |
-| app/src/puppet/puppetMath.ts | 4 KB |  |
-| app/src/puppet/puppetRender.ts | 6 KB |  |
-| app/src/puppet/PuppetRenderer.ts | 9 KB |  |
-| app/src/puppet/selftest.node.ts | 10 KB |  |
+| app/public/rig/hair_puff.png | 413 KB | 717x432 RGBA |
+| app/public/rig/hair_tendril_L.png | 116 KB | 175x404 RGBA |
+| app/public/rig/hair_tendril_R.png | 107 KB | 156x414 RGBA |
+| app/src/puppet/puppetMath.ts | 5 KB |  |
+| app/src/puppet/puppetRender.ts | 8 KB |  |
+| app/src/puppet/PuppetRenderer.ts | 11 KB |  |
+| app/src/puppet/selftest.node.ts | 14 KB |  |
 | app/src/puppet/mouth/mouthMath.ts | 4 KB |  |
 | app/src/puppet/mouth/mouthShapes.ts | 3 KB |  |
 | app/src/puppet/mouth/mouthLayers.ts | 2 KB |  |
 | app/src/puppet/mouth/jawController.ts | 2 KB |  |
 | app/src/puppet/mouth/MouthRenderer.ts | 5 KB |  |
-| app/src/puppet/mouth/mouthSelfTest.ts | 6 KB |  |
-| app/test_out/gaze_3x3.png | 814 KB | 1560x1920 RGBA |
-| app/test_out/blink_strip.png | 899 KB | 520x3200 RGBA |
-| app/test_out/combo_expressions.png | 271 KB | 1560x640 RGBA |
-| app/test_out/mouth_shapes.png | 143 KB | 612x360 RGBA |
-| app/test_out/mouth_ramp.png | 142 KB | 612x360 RGBA |
+| app/src/puppet/mouth/mouthSelfTest.ts | 7 KB |  |
+| app/test_out/gaze_3x3.png | 852 KB | 1560x1920 RGBA |
+| app/test_out/blink_strip.png | 919 KB | 520x3200 RGBA |
+| app/test_out/combo_expressions.png | 283 KB | 1560x640 RGBA |
+| app/test_out/mouth_shapes.png | 145 KB | 612x360 RGBA |
+| app/test_out/mouth_ramp.png | 143 KB | 612x360 RGBA |
+| app/test_out/hair_sway.png | 587 KB | 1440x424 RGBA |
+| app/test_out/wink_smile.png | 148 KB | 1200x285 RGBA |
 | docs/EYE_ANIMATION_ARCHITECTURE.md | 3 KB |  |
 | docs/CHARACTER_LAYER_MAP.md | 3 KB |  |
 | docs/ANIMATION_ENGINE_EVALUATION.md | 3 KB |  |
 | docs/EYE_TRACKING_SPECIFICATION.md | 2 KB |  |
 | docs/HEAD_MOVEMENT_SPECIFICATION.md | 1 KB |  |
-| docs/IMPLEMENTATION_AND_TEST_REPORT.md | 6 KB |  |
+| docs/IMPLEMENTATION_AND_TEST_REPORT.md | 7 KB |  |
 | README.md | 5 KB |  |
 | layers/parts/*.png | 14 files | part crops |
 | layers/waifu_companion_scaffold.psd read-back | ok | 14 layers, canvas 1264x843 |

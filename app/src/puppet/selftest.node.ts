@@ -5,7 +5,7 @@
  */
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { gazeOffset, blinkValue, lidBottomY, headTarget, smoothDamp, clamp, idleGaze, pointerToGaze } from "./puppetMath";
+import { gazeOffset, blinkValue, lidBottomY, headTarget, smoothDamp, clamp, idleGaze, pointerToGaze, SecondaryMotion } from "./puppetMath";
 import { mouthGeometry } from "./mouth/mouthMath";
 import { SHAPE_PARAMS } from "./mouth/mouthShapes";
 import { runMouthSelfTest, type MouthGridSpec } from "./mouth/mouthSelfTest";
@@ -27,10 +27,11 @@ const FIG: [number, number, number, number] = [470, 7, 789, 842];
 
 async function main(): Promise<void> {
   const load = async (f: string) => loadImage(RIG + f);
-  const [body, neck, headBase, irisL, irisR, lidL, lidR, browL, browR, mouthClosed, mouthJaw] = await Promise.all([
+  const [body, neck, headBase, irisL, irisR, lidL, lidR, browL, browR, mouthClosed, mouthJaw, hairPuff, hairTL, hairTR] = await Promise.all([
     load("body_base.png"), load("neck_patch.png"), load("head_base_nm.png"),
     load("iris_L.png"), load("iris_R.png"), load("lid_L.png"), load("lid_R.png"),
     load("brow_L.png"), load("brow_R.png"), load("mouth_closed.png"), load("mouth_jaw.png"),
+    load("hair_puff.png"), load("hair_tendril_L.png"), load("hair_tendril_R.png"),
   ]);
   const assets: RigAssets = {
     body, bodyW: body.width, bodyH: body.height, neck, headBase,
@@ -39,11 +40,14 @@ async function main(): Promise<void> {
       closed: mouthClosed, closedW: mouthClosed.width, closedH: mouthClosed.height,
       jaw: mouthJaw, jawW: mouthJaw.width, jawH: mouthJaw.height,
     },
+    hair: { puff: hairPuff, tL: hairTL, tR: hairTR },
     sizes: {
       headBase: [headBase.width, headBase.height],
       iris_L: [irisL.width, irisL.height], iris_R: [irisR.width, irisR.height],
       lid_L: [lidL.width, lidL.height], lid_R: [lidR.width, lidR.height],
       brow_L: [browL.width, browL.height], brow_R: [browR.width, browR.height],
+      hair_puff: [hairPuff.width, hairPuff.height],
+      hair_tendril_L: [hairTL.width, hairTL.height], hair_tendril_R: [hairTR.width, hairTR.height],
     },
   };
 
@@ -119,7 +123,8 @@ async function main(): Promise<void> {
     const ctx = canvas.getContext("2d");
     renderPuppetFrame(ctx as never, assets, man, {
       gaze: { x: 0, y: 0 }, blink: 0, browRaise: 0,
-      headRot: 0, headDx: 0, headDy: 0, breathPhase: 0, mouth: geom0, ...p,
+      headRot: 0, headDx: 0, headDy: 0, breathPhase: 0, mouth: geom0,
+      wink: 0, smile: 0, hair: { puff: { x: 0, y: 0 }, tL: { x: 0, y: 0 }, tR: { x: 0, y: 0 } }, ...p,
     }, v, { w: cw, h: ch, backdrop: "#eceae8" }); // evidence frames get an explicit backdrop; app stage stays transparent
     return canvas;
   };
@@ -160,6 +165,63 @@ async function main(): Promise<void> {
   }
   check("mouth criterion 1: rest mouth pixels match the ORIGINAL canon art", acc / npx < 7,
     `mean|Δ|=${(acc / npx).toFixed(2)} over ${npx}px of the mouth zone (k=1 composite vs pose)`);
+
+  // ---- v0.5: secondary motion, wink, smile ----
+  const sm2 = new SecondaryMotion();
+  let offMin = 0, off = 0;
+  for (let i = 0; i < 30; i++) off = sm2.step(1, 4, 1 / 60);
+  for (let i = 0; i < 240; i++) off = sm2.step(1, 4, 1 / 60);
+  const offEnd = off;
+  const sm3 = new SecondaryMotion();
+  for (let i = 0; i < 30; i++) offMin = Math.min(offMin, sm3.step(1, 4, 1 / 60));
+  check("secondary motion: drag-behind lag while head moves, decays to 0 at rest",
+    offMin < -0.3 && Math.abs(offEnd) < 0.05, `minLag=${offMin.toFixed(2)} end=${offEnd.toFixed(4)}`);
+
+  const cl = (s: number): number => mouthGeometry(0.5, SHAPE_PARAMS.A, man.mouth, s).cornerLift;
+  check("smile parameter lifts mouth corners monotonically over -1..1",
+    cl(-1) < 0 && cl(0) === 0 && cl(0.5) > 0 && cl(1) > cl(0.5),
+    `cornerLift: ${[-1, 0, 0.5, 1].map(cl).map((v) => v.toFixed(1)).join(", ")}`);
+
+  // wink independence: right lid closes, left untouched (pixel diff per half)
+  const eyeView: View = { scale: 2, ox: -590 * 2, oy: -115 * 2 };
+  const fw0 = frame({ wink: 0 }, eyeView, 160, 60);
+  const fw1 = frame({ wink: 1 }, eyeView, 160, 60);
+  const w0 = fw0.getContext("2d").getImageData(0, 0, 160, 60).data;
+  const w1 = fw1.getContext("2d").getImageData(0, 0, 160, 60).data;
+  let dL = 0, dR = 0, nL = 0, nR = 0;
+  for (let i = 0; i < w0.length; i += 4) {
+    const px = (i / 4) % 160;
+    const d = Math.abs(w0[i] - w1[i]) + Math.abs(w0[i + 1] - w1[i + 1]) + Math.abs(w0[i + 2] - w1[i + 2]);
+    if (px < 80) { dL += d; nL++; } else { dR += d; nR++; }
+  }
+  check("wink is per-eye: right lid closes, left eye untouched",
+    dR / nR > 3 * Math.max(0.01, dL / nL), `mean|Δ| L=${(dL / nL).toFixed(2)} R=${(dR / nR).toFixed(2)}`);
+
+  // evidence: hair secondary motion + wink/smile combos
+  const headView: View = { scale: 2, ox: -512 * 2, oy: 0 };
+  const hw2 = 240 * 2, hh2 = 212 * 2;
+  const hairCells = [
+    frame({ headRot: 2.4, headDx: 3, hair: { puff: { x: -1.6, y: -0.9 }, tL: { x: -2.2, y: -1.2 }, tR: { x: -2.2, y: -1.2 } } }, headView, hw2, hh2),
+    frame({ headRot: 2.4, headDx: 3 }, headView, hw2, hh2),
+    frame({ headRot: -2.4, headDx: -3, hair: { puff: { x: 1.6, y: -0.9 }, tL: { x: 2.2, y: -1.2 }, tR: { x: 2.2, y: -1.2 } } }, headView, hw2, hh2),
+  ];
+  const hairGrid = createCanvas(hw2 * 3, hh2);
+  const hg = hairGrid.getContext("2d");
+  hairCells.forEach((c, i) => hg.drawImage(c, i * hw2, 0));
+  writeFileSync(OUT + "hair_sway.png", hairGrid.toBuffer("image/png"));
+
+  const faceView: View = { scale: 3, ox: -580 * 3, oy: -95 * 3 };
+  const fw = 100 * 3, fh = 95 * 3;
+  const faceCells = [
+    frame({}, faceView, fw, fh),
+    frame({ wink: 1 }, faceView, fw, fh),
+    frame({ smile: 0.9, mouth: mouthGeometry(0.35, SHAPE_PARAMS.A, man.mouth, 0.9) }, faceView, fw, fh),
+    frame({ wink: 1, smile: 0.9, mouth: mouthGeometry(0.35, SHAPE_PARAMS.A, man.mouth, 0.9) }, faceView, fw, fh),
+  ];
+  const faceGrid = createCanvas(fw * 4, fh);
+  const fg = faceGrid.getContext("2d");
+  faceCells.forEach((c, i) => fg.drawImage(c, i * fw, 0));
+  writeFileSync(OUT + "wink_smile.png", faceGrid.toBuffer("image/png"));
   const grid = createCanvas(CW * 3, CH * 3);
   const gctx = grid.getContext("2d");
   const gazes: [number, number][] = [[-1, -1], [0, -1], [1, -1], [-1, 0], [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];

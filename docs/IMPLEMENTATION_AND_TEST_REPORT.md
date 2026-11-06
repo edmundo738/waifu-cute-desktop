@@ -59,6 +59,23 @@ MouthRenderer,mouthSelfTest}.ts`. Testes: 9 asserções novas + pixel-rest, **19
 evidência visual `mouth_shapes.png` (vogais reconhecíveis sem exagero) e `mouth_ramp.png`
 (transição suave) **[OBSERVED]**; olhos/cabeça intactos em `gaze_3x3.png` (critério 8).
 
+## v0.5 — secondary motion & expression parameters (same component idea)
+
+- **Hair**: puff crown + side tendrils cut as feathered overlay layers (no inpaint:
+  the base keeps the hair, sprites ride on top; dark curl texture + sub-pixel amplitudes
+  hide the double-draw). Motion = `SecondaryMotion` lag (smoothed head driver − driver):
+  drag-behind while the head moves, decay to 0 at rest, plus idle sway; clamped to
+  hair limits (±2.5/±1.5 px). **[MEASURED]** minLag −0.94, end −0.0000; **[OBSERVED]**
+  `hair_sway.png` (no seams/rectangles at ±2.4° head rot).
+- **Wink per eye**: lid control split (global blink ∨ right wink ∨ smile squint).
+  **[MEASURED]** wink=1 → mean|Δ| L=0.00 / R=51.19 (perfect independence);
+  lid descent rebuilt as flat skin fill + lash sprite at natural size on the moving
+  edge (fixes stretched-lash blob found in the first wink frames).
+- **Smile parameter** (−1..1): procedural mouth-corner lift (monotonic **[MEASURED]**
+  −1.8/0/0.9/1.8 px) + lid squint; wired to triggers (compliment 0.9, greet 0.6,
+  playful 0.5+wink…) and to chat-reply sentiment. Evidence `wink_smile.png`.
+- Self-test **23/23 PASS**; eyes/head/mouth regressions clean.
+
 ## Reproducible commands
 ```bash
 cd app && npm install

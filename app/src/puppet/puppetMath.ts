@@ -96,3 +96,20 @@ export function pointerToGaze(px: number, py: number, m: PointerMap): Vec2 {
   };
   return { x: soft((px - m.eyeX) / m.sensX), y: soft((py - m.eyeY) / m.sensY) };
 }
+
+/**
+ * Secondary motion (hair, cloth…): the layer lives INSIDE the head group, so
+ * its extra offset is the lag between a smoothed copy of the driver (head
+ * movement) and the driver itself — negative while the head moves
+ * (drag-behind), decaying to 0 when the head settles. Bounded by construction.
+ */
+export class SecondaryMotion {
+  private s = 0;
+  step(driver: number, lambda: number, dt: number): number {
+    this.s = smoothDamp(this.s, driver, lambda, dt);
+    return this.s - driver;
+  }
+  reset(): void {
+    this.s = 0;
+  }
+}

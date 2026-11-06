@@ -34,6 +34,16 @@ coordinates in `app/public/rig/manifest.json` (pose pixel space, 1264×843).
 | oral cavity + teeth + tongue | procedural vector | `MouthRenderer.ts` | clipped to cavity path; teeth ≤45 % cavity height; tongue only o≥0.5 |
 | upper-lip seam | procedural stroke | `MouthRenderer.ts` | anime line on cavity ceiling while open |
 
+## Hair secondary-motion layers (v0.5, verified)
+
+| Layer | Asset | Origin | Notes |
+|---|---|---|---|
+| puff crown overlay | `rig/hair_puff.png` | feathered cut of canon hair | lag + idle sway, sub-pixel at silhouette |
+| tendril L / R overlays | `rig/hair_tendril_L/R.png` | feathered cuts of side curls | drawn in front of face edge; lag λ3 |
+
+Not separated (documented, not faked): earrings (gold-on-skin ghost risk), forehead
+wisps, back hair mass (not visible in front view).
+
 ## Missing components (must be authored/cut later — NOT faked)
 
 - Lower-lid independent layer (currently part of face base)

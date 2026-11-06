@@ -63,7 +63,7 @@ export class JawController {
     return this.o;
   }
 
-  geom(anchors: MouthAnchors): MouthGeom {
-    return mouthGeometry(this.o, this.p, anchors);
+  geom(anchors: MouthAnchors, smile = 0): MouthGeom {
+    return mouthGeometry(this.o, this.p, anchors, smile);
   }
 }

@@ -29,6 +29,15 @@ const FACE_BY_TRIGGER: Record<TriggerName, FaceParams> = {
 const TALK_PHRASE =
   "Olá! A minha boca agora mexe mesmo: camadas, máscaras e mandíbula, tudo feito à mão.";
 
+const EXPRESSION_BY_TRIGGER: Record<TriggerName, { smile?: number; wink?: boolean }> = {
+  greet: { smile: 0.6 },
+  compliment: { smile: 0.9 },
+  think: { smile: -0.15 },
+  notify: { smile: 0 },
+  playful: { smile: 0.5, wink: true },
+  talk: { smile: 0.3 },
+};
+
 async function detectRig(): Promise<boolean> {
   try {
     const r = await fetch(RIG_MANIFEST_URL, { method: "HEAD" });
@@ -78,6 +87,7 @@ export default function App() {
         }
       } else if (renderer instanceof PuppetRenderer) {
         renderer.setFaceParams({ browRaise: 0, gazeBias: { x: 0, y: 0 } });
+        renderer.setExpression({ smile: 0 });
       }
     };
     sm.onTalk = (active) => {
@@ -124,8 +134,9 @@ export default function App() {
     const offTriggers = subscribeTriggers((t) => {
       sm.trigger(t);
       // talk has no pose swap, so it never reaches onChange: drive the mouth here
-      if (t === "talk" && rendererRef.current instanceof PuppetRenderer) {
-        rendererRef.current.setSpeech(TALK_PHRASE);
+      if (rendererRef.current instanceof PuppetRenderer) {
+        if (t === "talk") rendererRef.current.setSpeech(TALK_PHRASE);
+        rendererRef.current.setExpression(EXPRESSION_BY_TRIGGER[t]);
       }
     });
     const offPointer = subscribePointer((x, y) => renderer?.setGaze(x, y));
@@ -193,8 +204,17 @@ export default function App() {
     setBrainBusy(false);
     setChat((c) => [...c, { who: "her", text: reply }]);
     const r = reactTo(reply);
+    if (rendererRef.current instanceof PuppetRenderer) {
+      rendererRef.current.setSpeech(reply);
+      rendererRef.current.setExpression(
+        r === "compliment" ? { smile: 0.9 } :
+        r === "greet" ? { smile: 0.6 } :
+        r === "playful" ? { smile: 0.5, wink: true } :
+        r === "think" ? { smile: -0.1 } :
+        r === "notify" ? { smile: 0 } : { smile: 0.3 },
+      );
+    }
     if (r) smRef.current?.trigger(r);
-    if (rendererRef.current instanceof PuppetRenderer) rendererRef.current.setSpeech(reply);
     smRef.current?.trigger("talk");
     pushLog(offline ? "brain offline → canned reply (honest fallback)" : `brain reply via ${brain?.model ?? "local LLM"}`);
   };

@@ -40,6 +40,8 @@ export interface MouthGeom {
   tongueA: number;  // tongue only in adequate openings
   closedA: number;  // original-lips sprite alpha (rest = pixel-perfect)
   openA: number;    // procedural open-mouth alpha
+  smile: number;    // -1..1: mouth-corner lift (procedural, open mouth only)
+  cornerLift: number; // px the corners rise with smile
 }
 
 /** opening → perceptual state label (documentation/UI only; math stays continuous) */
@@ -52,8 +54,9 @@ export function openingState(o: number): string {
   return "expressive-open";
 }
 
-export function mouthGeometry(o: number, p: ShapeParams, a: MouthAnchors): MouthGeom {
+export function mouthGeometry(o: number, p: ShapeParams, a: MouthAnchors, smile = 0): MouthGeom {
   const oc = clamp(o, 0, 1);
+  const sm = clamp(smile, -1, 1);
   const jawDy = oc * a.jaw_dy * p.jaw;
   const cavityTop = a.upper_lip_bottom_y - oc * p.lift;
   const cavityBot = a.lower_lip_top_y + jawDy - 0.4;
@@ -70,6 +73,8 @@ export function mouthGeometry(o: number, p: ShapeParams, a: MouthAnchors): Mouth
     tongueA: clamp((oc - 0.5) / 0.3, 0, 1) * p.tongue,
     closedA: clamp(1 - oc / 0.12, 0, 1),
     openA: clamp((oc - 0.06) / 0.12, 0, 1),
+    smile: sm,
+    cornerLift: sm * 1.8,
   };
 }
 

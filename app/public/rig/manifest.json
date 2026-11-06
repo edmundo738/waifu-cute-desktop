@@ -112,5 +112,33 @@
    179
   ]
  },
- "head_base": "head_base_nm.png"
+ "head_base": "head_base_nm.png",
+ "hair": {
+  "puff_box": [
+   544,
+   2,
+   700,
+   96
+  ],
+  "tendril_L": [
+   546,
+   92,
+   584,
+   180
+  ],
+  "tendril_R": [
+   676,
+   92,
+   710,
+   182
+  ],
+  "limits": {
+   "dx": 2.5,
+   "dy": 1.5
+  },
+  "lag": {
+   "puff": 0.35,
+   "tendril": 0.7
+  }
+ }
 }

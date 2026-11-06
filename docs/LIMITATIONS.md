@@ -26,6 +26,10 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
     OpenAI-compatible) with honest canned-reply fallback when offline. Caveats: face-follow
     needs camera permission and downloads the WASM/model from CDN on first use; the brain
     needs LM Studio running with CORS enabled (in the Tauri shell the call moves to Rust).
+14. **v0.5 secondary motion & expressions**: hair puff/tendrils with drag-behind lag +
+    idle sway, per-eye wink, smile parameter (corner lift + squint) wired to triggers and
+    chat sentiment (23/23 selftest). Overlay technique caps hair amplitudes at sub-pixel
+    near the silhouette (echo control); earrings/forehead-wisps intentionally not separated.
 13. **v0.4 Mouth Puppet**: opening×shape component with jaw patch, clipped oral cavity,
     gradual teeth/tongue and speech timeline (19/19 selftest + evidence frames). Still
     procedural-minimal by design: no lip texture detail at extreme openings, no asymmetric

@@ -33,13 +33,15 @@ function cavityPath(ctx: Ctx2D, v: MouthView, a: MouthAnchors, g: MouthGeom): vo
     ctx.ellipse(cx, mid, hw, Math.max(0.6, (bot - top) / 2), 0, 0, Math.PI * 2);
     return;
   }
-  // superellipse-ish anime mouth: soft cupid-bow top, rounded bottom corners
+  // superellipse-ish anime mouth: soft cupid-bow top, rounded bottom corners;
+  // smile lifts the corners (procedural expression parameter)
   const bow = (top - mid) * 0.25 * (1 - g.round);
-  ctx.moveTo(cx - hw, mid);
+  const cl = g.cornerLift * v.k;
+  ctx.moveTo(cx - hw, mid - cl);
   ctx.quadraticCurveTo(cx - hw * 0.45, top + bow, cx, top + (1 - g.round) * (mid - top) * 0.35);
-  ctx.quadraticCurveTo(cx + hw * 0.45, top + bow, cx + hw, mid);
-  ctx.quadraticCurveTo(cx + hw * 0.55, bot, cx, bot);
-  ctx.quadraticCurveTo(cx - hw * 0.55, bot, cx - hw, mid);
+  ctx.quadraticCurveTo(cx + hw * 0.45, top + bow, cx + hw, mid - cl);
+  ctx.quadraticCurveTo(cx + hw * 0.55, bot - cl * 0.5, cx, bot);
+  ctx.quadraticCurveTo(cx - hw * 0.55, bot - cl * 0.5, cx - hw, mid - cl);
   ctx.closePath();
 }
 
@@ -127,9 +129,10 @@ export function drawMouth(
       ctx.ellipse(cx, midY, hw, Math.max(0.6, (bot - top) / 2), 0, Math.PI, Math.PI * 2);
     } else {
       const bow = (top - midY) * 0.25 * (1 - g.round);
-      ctx.moveTo(cx - hw, midY);
+      const cl = g.cornerLift * v.k;
+      ctx.moveTo(cx - hw, midY - cl);
       ctx.quadraticCurveTo(cx - hw * 0.45, top + bow, cx, top + (midY - top) * 0.35 * (1 - g.round));
-      ctx.quadraticCurveTo(cx + hw * 0.45, top + bow, cx + hw, midY);
+      ctx.quadraticCurveTo(cx + hw * 0.45, top + bow, cx + hw, midY - cl);
     }
     ctx.stroke();
     ctx.restore();

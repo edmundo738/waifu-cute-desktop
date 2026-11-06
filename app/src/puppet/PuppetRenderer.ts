@@ -1,6 +1,6 @@
 import { CompanionRenderer, PoseName, SPRITE_URL } from "../companion/types";
 import { RigManifest, RigAssets, computeView, renderPuppetFrame } from "./puppetRender";
-import { headTarget, smoothDamp, idleGaze, blinkValue, pointerToGaze } from "./puppetMath";
+import { headTarget, smoothDamp, idleGaze, blinkValue, pointerToGaze, SecondaryMotion, clamp } from "./puppetMath";
 import { JawController } from "./mouth/jawController";
 import { loadMouthAssets } from "./mouth/mouthLayers";
 import type { MouthShape } from "./mouth/mouthShapes";
@@ -44,10 +44,25 @@ export class PuppetRenderer implements CompanionRenderer {
   private external = { x: 0, y: 0 };
   private lastExternal = -10;
   private jaw = new JawController();
+  // secondary motion: hair layers lag behind the head (spring drag-behind)
+  private puffX = new SecondaryMotion(); private puffY = new SecondaryMotion();
+  private tLX = new SecondaryMotion(); private tLY = new SecondaryMotion();
+  private tRX = new SecondaryMotion(); private tRY = new SecondaryMotion();
+  private smile = 0;
+  private smileTarget = 0;
+  private winkStart = -10;
+
+  /** Expression parameters (v0.5): smile -1..1 and a one-shot right-eye wink. */
+  setExpression(e: { smile?: number; wink?: boolean }): void {
+    if (e.smile !== undefined) this.smileTarget = clamp(e.smile, -1, 1);
+    if (e.wink) this.winkStart = this.t;
+  }
   private t = 0;
   private last = 0;
   private raf = 0;
   private disposed = false;
+  private hairNow: { puff: { x: number; y: number }; tL: { x: number; y: number }; tR: { x: number; y: number } } =
+    { puff: { x: 0, y: 0 }, tL: { x: 0, y: 0 }, tR: { x: 0, y: 0 } };
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -75,12 +90,19 @@ export class PuppetRenderer implements CompanionRenderer {
       load("/rig/lid_R.png"), load("/rig/brow_L.png"), load("/rig/brow_R.png"),
     ]);
     const mouth = await loadMouthAssets(load);
+    const [hairPuff, hairTL, hairTR] = await Promise.all([
+      load("/rig/hair_puff.png"), load("/rig/hair_tendril_L.png"), load("/rig/hair_tendril_R.png"),
+    ]);
     this.assets = {
       body, bodyW: body.width, bodyH: body.height, neck, headBase,
       iris: { L: irisL, R: irisR }, lid: { L: lidL, R: lidR }, brow: { L: browL, R: browR },
       mouth,
+      hair: { puff: hairPuff, tL: hairTL, tR: hairTR },
       sizes: {
         headBase: [headBase.width, headBase.height],
+        hair_puff: [hairPuff.width, hairPuff.height],
+        hair_tendril_L: [hairTL.width, hairTL.height],
+        hair_tendril_R: [hairTR.width, hairTR.height],
         iris_L: [irisL.width, irisL.height], iris_R: [irisR.width, irisR.height],
         lid_L: [lidL.width, lidL.height], lid_R: [lidR.width, lidR.height],
         brow_L: [browL.width, browL.height], brow_R: [browR.width, browR.height],
@@ -191,6 +213,32 @@ export class PuppetRenderer implements CompanionRenderer {
 
     // mouth: jaw controller (opening smoothing + shape blend + speech timeline)
     this.jaw.step(dt, this.t);
+    this.smile = smoothDamp(this.smile, this.smileTarget, 6, dt);
+
+    // hair secondary motion: lag = smoothed(head driver) - head driver, clamped
+    const hlim = this.man.hair.limits;
+    const drvX = this.head.dx + this.head.rot * 0.8;
+    const drvY = this.head.dy;
+    const sway = (ph: number, amp: number): number => amp * Math.sin(this.t * 1.3 + ph);
+    // amplitudes kept sub-pixel-ish at the silhouette: the overlay technique
+    // (base keeps the hair, sprite rides on top) would echo at large offsets
+    const lag = (m: SecondaryMotion, drv: number, lam: number, lim: number): number =>
+      clamp(m.step(drv, lam, dt), -lim, lim);
+    const hair = {
+      puff: {
+        x: lag(this.puffX, drvX, 4, hlim.dx) * this.man.hair.lag.puff + sway(0.5, 0.2),
+        y: lag(this.puffY, drvY, 4, hlim.dy) * this.man.hair.lag.puff,
+      },
+      tL: {
+        x: lag(this.tLX, drvX, 3, hlim.dx) * this.man.hair.lag.tendril + sway(0, 0.35),
+        y: lag(this.tLY, drvY, 3, hlim.dy) * this.man.hair.lag.tendril,
+      },
+      tR: {
+        x: lag(this.tRX, drvX, 3, hlim.dx) * this.man.hair.lag.tendril + sway(2.1, 0.35),
+        y: lag(this.tRY, drvY, 3, hlim.dy) * this.man.hair.lag.tendril,
+      },
+    };
+    this.hairNow = hair;
 
     // blink scheduler (ANIMATION_SPEC #2 intervals)
     if (this.blinkStart < 0 && this.t > this.nextBlink) this.blinkStart = this.t;
@@ -225,7 +273,10 @@ export class PuppetRenderer implements CompanionRenderer {
       headDx: this.head.dx,
       headDy: this.head.dy,
       breathPhase: this.breath,
-      mouth: this.jaw.geom(this.man.mouth),
+      mouth: this.jaw.geom(this.man.mouth, this.smile * 0.6),
+      wink: blinkValue(this.t - this.winkStart, 0.45),
+      smile: this.smile,
+      hair: this.hairNow,
     }, view, { w: canvas.width, h: canvas.height });
   }
 }

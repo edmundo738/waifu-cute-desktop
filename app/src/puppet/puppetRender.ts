@@ -9,7 +9,7 @@
  *     → lid L/R  (clipped to opening, stretched downward by blink)
  *     → brow L/R (independent translation) ]
  */
-import { Vec2, gazeOffset, headTarget, lidBottomY, browOffset, RigLimits } from "./puppetMath";
+import { Vec2, gazeOffset, headTarget, lidBottomY, browOffset, clamp, RigLimits } from "./puppetMath";
 import type { MouthAnchors, MouthGeom } from "./mouth/mouthMath";
 import type { MouthAssets } from "./mouth/mouthLayers";
 import { drawMouth } from "./mouth/MouthRenderer";
@@ -55,6 +55,14 @@ export interface EyeRig {
   brow_box: [number, number, number, number];
 }
 
+export interface HairRig {
+  puff_box: [number, number, number, number];
+  tendril_L: [number, number, number, number];
+  tendril_R: [number, number, number, number];
+  limits: { dx: number; dy: number };
+  lag: { puff: number; tendril: number };
+}
+
 export interface RigManifest {
   head_box: [number, number, number, number];
   neck_box: [number, number, number, number];
@@ -62,6 +70,7 @@ export interface RigManifest {
   eyes: { L: EyeRig; R: EyeRig };
   limits: RigLimits;
   mouth: MouthAnchors;
+  hair: HairRig;
 }
 
 export interface RigAssets {
@@ -72,6 +81,7 @@ export interface RigAssets {
   lid: { L: CanvasImageSource; R: CanvasImageSource };
   brow: { L: CanvasImageSource; R: CanvasImageSource };
   mouth: MouthAssets | null;
+  hair: { puff: CanvasImageSource; tL: CanvasImageSource; tR: CanvasImageSource } | null;
   sizes: Record<string, [number, number]>;
 }
 
@@ -83,6 +93,9 @@ export interface PuppetParams {
   headDx: number; headDy: number;
   breathPhase: number; // seconds
   mouth: MouthGeom | null; // computed mouth geometry (null = no mouth rig)
+  wink: number;          // 0..1 right-eye wink (per-eye lid control)
+  smile: number;         // -1..1 expression: corner lift + lid squint
+  hair: { puff: Vec2; tL: Vec2; tR: Vec2 } | null; // secondary-motion offsets
 }
 
 export interface View { scale: number; ox: number; oy: number }
@@ -138,6 +151,13 @@ export function renderPuppetFrame(
   const [hw, hh] = assets.sizes.headBase;
   ctx.drawImage(assets.headBase, S(hx0), T(hy0), hw * k, hh * k);
 
+  // hair puff overlay (secondary motion; overlap+feather hides the double-draw)
+  if (p.hair && assets.hair) {
+    const hb = man.hair.puff_box;
+    ctx.drawImage(assets.hair.puff, S(hb[0] + p.hair.puff.x), T(hb[1] + p.hair.puff.y),
+      (hb[2] - hb[0]) * k, (hb[3] - hb[1]) * k);
+  }
+
   const off = gazeOffset(p.gaze, man.limits);
   (["L", "R"] as const).forEach((side) => {
     const e = man.eyes[side];
@@ -155,14 +175,18 @@ export function renderPuppetFrame(
       S(cx + off.x - iw / 2), T(cy + off.y - ih / 2), iw * k, ih * k);
 
     // upper lid: stretched skin+lash band sliding down inside the opening
-    const b = p.blink;
+    // (per-eye: global blink, right-eye wink, smile squint)
+    const squint = clamp(p.smile, 0, 1) * 0.18;
+    const b = Math.max(p.blink, side === "R" ? p.wink : 0, squint);
     if (b > 0.001) {
       const [lx0, ly0, lx1, ly1] = e.lid_box;
       const bottom = lidBottomY(b, { y0: ly0, y1: ly1 }, cy, ry);
       const [lw, lh] = assets.sizes["lid_" + side];
-      ctx.drawImage(assets.lid[side],
-        S(lx0), T(ly0), (lx1 - lx0) * k, (bottom - ly0) * k);
-      void lw; void lh;
+      // descending lid = flat skin fill (sampled per side) + the lash-line sprite
+      // at NATURAL size riding the moving edge (never stretched -> no blob)
+      ctx.fillStyle = side === "L" ? "#51281c" : "#582d1f";
+      ctx.fillRect(S(lx0 - 1), T(cy - ry), (lx1 - lx0 + 2) * k, (bottom - (cy - ry)) * k);
+      ctx.drawImage(assets.lid[side], S(lx0), T(bottom - lh), lw * k, lh * k);
     }
     ctx.restore();
 
@@ -176,6 +200,16 @@ export function renderPuppetFrame(
   // mouth component (v0.4): jaw patch → closed-lips crossfade → clipped cavity
   if (p.mouth && assets.mouth) {
     drawMouth(ctx, { S, T, k }, man.mouth, p.mouth, assets.mouth);
+  }
+
+  // side tendrils in front of the face edge (secondary motion, feathered)
+  if (p.hair && assets.hair) {
+    (["L", "R"] as const).forEach((side) => {
+      const box = side === "L" ? man.hair.tendril_L : man.hair.tendril_R;
+      const off = side === "L" ? p.hair!.tL : p.hair!.tR;
+      ctx.drawImage(side === "L" ? assets.hair!.tL : assets.hair!.tR,
+        S(box[0] + off.x), T(box[1] + off.y), (box[2] - box[0]) * k, (box[3] - box[1]) * k);
+    });
   }
 
   ctx.restore();
