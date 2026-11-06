@@ -23,6 +23,7 @@ animated desktop companion on Windows 11 (Tauri 2 + React + TypeScript + Live2D 
 | `live2d/` | `LIVE2D_PREPARATION.md` (parts tree, parameters, pipeline) + `LICENSE_REVIEW.md` | ✅ docs complete (rigging = manual, Cubism Editor) |
 | `docs/` | `CHARACTER_DESIGN.md`, `TECHNICAL_INSTRUCTIONS.md`, `LIMITATIONS.md`, `VALIDATION_REPORT.md` | ✅ complete |
 | `tools/` | Reproducible scripts: `compose_sheets.py`, `build_psd_scaffold.py`, `validate_package.py` | ✅ complete |
+| `app/` | Companion stage skeleton: React + TS + Vite, transparent sprites, static placeholder renderer, Live2D probe/adapter, Tauri 2 config | ✅ web build verified (Tauri shell not compiled here) |
 
 ## The character in one paragraph
 

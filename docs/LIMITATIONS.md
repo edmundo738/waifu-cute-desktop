@@ -14,6 +14,9 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
 8. Reproducible tooling in `tools/`.
 9. High-res **wink close-up** (completing the four close-ups) and five **viseme mouth-shape
    art references** (A/I/U/E/O) with a combined viseme sheet.
+10. Runnable **companion stage skeleton** (`app/`): transparent sprite mattes, placeholder
+    static renderer, reaction state machine, Tauri/browser event bridge, Live2D probe + lazy
+    adapter; `npm run build` passes and the dev server serves sprites and the model probe correctly.
 
 ## Partial
 1. **Viseme references are art guidance only**: `expressions/viseme_*.png` illustrate A/I/U/E/O
@@ -31,8 +34,9 @@ and what is **not done / manual**. Re-verify any time with `python3 tools/valida
 2. **Clean cut artwork**: true silhouettes + hidden-area paint (Photoshop/Clip Studio).
 3. **Mouth viseme chart** (A/I/U/E/O/closed) for talk animation — authored in Editor, not illustrated here.
 4. **Motion files**: the 12 specs in `animations/` are design documents only.
-5. **Runtime integration**: no Tauri 2 app skeleton exists in this repo yet; integration snippet lives in
-   `docs/TECHNICAL_INSTRUCTIONS.md` §5.
+5. **Tauri shell compilation**: `app/src-tauri/` is a configuration skeleton only — not compiled in
+   the sandbox (no Rust/webkit2gtk toolchain). The web stage itself is type-checked, built and
+   browser-verified; the Live2D renderer path is untested (no model exists to load).
 6. **Art-direction pass**: generated assets carry minor likeness drift between images (pendant, curl
    pattern). Compare against `poses/pose_reference_sheet.png` before promoting any new asset to canon.
 

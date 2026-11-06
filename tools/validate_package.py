@@ -23,6 +23,12 @@ REQUIRED_FILES = [
     "animations/ANIMATION_SPEC.md", "animations/animations.json",
     "live2d/LIVE2D_PREPARATION.md", "live2d/LICENSE_REVIEW.md",
     "docs/CHARACTER_DESIGN.md", "docs/TECHNICAL_INSTRUCTIONS.md", "docs/LIMITATIONS.md",
+    "app/package.json", "app/src/App.tsx", "app/src/companion/staticRenderer.ts",
+    "app/src/companion/stateMachine.ts", "app/src/companion/bridge.ts",
+    "app/src/companion/live2dAdapter.ts", "app/src-tauri/tauri.conf.json",
+    "app/public/sprites/companion_neutral.png", "app/public/sprites/companion_happy.png",
+    "app/public/sprites/companion_thinking.png", "app/public/sprites/companion_waving.png",
+    "app/public/sprites/companion_surprised.png", "app/public/sprites/companion_playful.png",
     "README.md",
 ]
 PART_COUNT = 14

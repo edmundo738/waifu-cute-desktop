@@ -1,6 +1,6 @@
 # Validation Report — Stage E
 
-Generated: 2026-11-06T07:33:08+00:00  
+Generated: 2026-11-06T07:47:01+00:00  
 Result: **PASS**
 
 | Deliverable | Size | Detail |
@@ -42,8 +42,21 @@ Result: **PASS**
 | live2d/LICENSE_REVIEW.md | 3 KB |  |
 | docs/CHARACTER_DESIGN.md | 4 KB |  |
 | docs/TECHNICAL_INSTRUCTIONS.md | 4 KB |  |
-| docs/LIMITATIONS.md | 3 KB |  |
-| README.md | 3 KB |  |
+| docs/LIMITATIONS.md | 4 KB |  |
+| app/package.json | 1 KB | json ok |
+| app/src/App.tsx | 6 KB |  |
+| app/src/companion/staticRenderer.ts | 3 KB |  |
+| app/src/companion/stateMachine.ts | 2 KB |  |
+| app/src/companion/bridge.ts | 2 KB |  |
+| app/src/companion/live2dAdapter.ts | 2 KB |  |
+| app/src-tauri/tauri.conf.json | 1 KB | json ok |
+| app/public/sprites/companion_neutral.png | 484 KB | 327x841 RGBA |
+| app/public/sprites/companion_happy.png | 442 KB | 329x845 RGBA |
+| app/public/sprites/companion_thinking.png | 390 KB | 266x838 RGBA |
+| app/public/sprites/companion_waving.png | 416 KB | 293x838 RGBA |
+| app/public/sprites/companion_surprised.png | 493 KB | 341x837 RGBA |
+| app/public/sprites/companion_playful.png | 528 KB | 372x843 RGBA |
+| README.md | 4 KB |  |
 | layers/parts/*.png | 14 files | part crops |
 | layers/waifu_companion_scaffold.psd read-back | ok | 14 layers, canvas 1264x843 |
 | animations.json entries | 12 | spec ids: idle_breathing, blink, eye_movement, cursor_tracking, head_sway, hair_movement, smile, talk, wave, think, surprised_reaction, playful_wink |

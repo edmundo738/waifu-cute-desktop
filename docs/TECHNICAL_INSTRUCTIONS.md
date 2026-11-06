@@ -31,32 +31,24 @@ arms (upper/fore/hand); keep layer names from `layers/PARTS_INVENTORY.md` so doc
 - Files: `model.moc3`, `model.model3.json`, `model.physics.json`, `expressions/*.exp3.json`, `motions/*.motion3.json`.
 - App-side directory: `models/companion/` (never commit Cubism Core or SDK binaries — see `live2d/LICENSE_REVIEW.md`).
 
-## 5. Runtime integration sketch (Tauri 2 + React + TS)
+## 5. Runtime integration — implemented skeleton (`app/`)
 
-```ts
-// src/companion/Live2DCompanion.tsx  (future app code — NOT implemented in this repo yet)
-import { Live2DModel } from "pixi-live2d-display"; // MIT; requires Cubism Core loaded at build time
-import * as PIXI from "pixi.js";
+The integration sketch is now **real, build-verified code** in `app/` (see `app/README.md`):
 
-export async function mountCompanion(canvas: HTMLCanvasElement, modelUrl: string) {
-  const app = new PIXI.Application({ view: canvas, backgroundAlpha: 0, antialias: true });
-  const model = await Live2DModel.from(modelUrl); // app-local models/companion/model.model3.json
-  app.stage.addChild(model);
-  return {
-    // cursor tracking: normalise window pointer into model space (see animations.json #4)
-    trackCursor(x: number, y: number, w: number, h: number) {
-      model.focus((x / w) * 2 - 1, (y / h) * 2 - 1);
-    },
-    playMotion: (group: string, index: number) => model.motion(group, index),
-    setExpression: (name: string) => model.expression(name),
-  };
-}
-```
-
-- WebView2 (Windows 11) provides WebGL2; keep a static-PNG fallback renderer using
-  `poses/pose_01_neutral.png` for GPU-blocked environments.
-- Tauri events (`pointermove`, TTS phoneme stream, notification events) map 1:1 to the
-  triggers listed in `animations/animations.json`.
+- `src/companion/staticRenderer.ts` — placeholder renderer: transparent canon sprites with
+  transform-only idle (breathing 3.2 s, sway 4.5 s, cursor lean). Not a rig, labelled as such in-UI.
+- `src/companion/stateMachine.ts` — trigger → pose reactions using the durations from
+  `animations/animations.json` (wave 2.3 s, happy 2.0 s, surprised 1.55 s, playful 1.5 s…).
+- `src/companion/bridge.ts` — one subscription API over Tauri 2 `companion://trigger` events
+  plus browser keyboard/pointer fallback; hotkeys G/C/T/N/P/V.
+- `src/companion/live2dAdapter.ts` — probes `models/companion/model.model3.json`
+  (content-type checked to defeat Vite's SPA-fallback 200s) and lazy-loads
+  `pixi-live2d-display` + `pixi.js` only when a model exists; otherwise null → static fallback.
+- `src-tauri/` — Tauri 2 configuration skeleton (transparent 480×720 always-on-top window,
+  `fire_trigger` command emitting `companion://trigger`). **Not compiled in the sandbox.**
+- WebView2 (Windows 11) provides WebGL2 for the future Live2D path; the static renderer is
+  deliberately WebGL-free so GPU-blocked environments still show the companion.
+- Tauri/bridge events map 1:1 to the triggers listed in `animations/animations.json`.
 
 ## 6. QA checklist before accepting new assets into canon
 
