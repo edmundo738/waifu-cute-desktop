@@ -181,9 +181,11 @@ export class PuppetRenderer implements CompanionRenderer {
 
     // head: same direction reference, smaller limits, slower smoothing (never a copy)
     const ht = headTarget(this.gaze, this.man.limits);
+    // while speaking: tiny rhythmic nod so the talk reads even at full-body scale
+    const nod = this.jaw.speechActive(this.t) ? 0.5 * Math.sin(this.t * 7) : 0;
     this.head.rot = smoothDamp(this.head.rot, ht.rot, 5, dt);
     this.head.dx = smoothDamp(this.head.dx, ht.dx, 5, dt);
-    this.head.dy = smoothDamp(this.head.dy, ht.dy, 5, dt);
+    this.head.dy = smoothDamp(this.head.dy, ht.dy + nod, 5, dt);
 
     this.brow = smoothDamp(this.brow, this.browTarget, 8, dt);
 

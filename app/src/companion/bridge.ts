@@ -15,6 +15,7 @@ const KEY_MAP: Record<string, TriggerName> = {
   n: "notify",
   p: "playful",
   v: "talk",
+  y: "talk",
 };
 
 export function subscribeTriggers(cb: (t: TriggerName) => void): () => void {

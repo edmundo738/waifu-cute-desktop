@@ -7,14 +7,6 @@ import { subscribePointer, subscribeTriggers } from "./companion/bridge";
 import { CompanionStateMachine } from "./companion/stateMachine";
 import { FaceFollower } from "./companion/faceFollow";
 import { BrainStatus, ChatMsg, askBrain, fallbackReply, probeBrain, reactTo } from "./companion/brain";
-import visA from "../../expressions/viseme_A.png";
-import visI from "../../expressions/viseme_I.png";
-import visU from "../../expressions/viseme_U.png";
-import visE from "../../expressions/viseme_E.png";
-import visO from "../../expressions/viseme_O.png";
-
-const VISEMES = ["A", "I", "U", "E", "O"] as const;
-const VISEME_URL: Record<(typeof VISEMES)[number], string> = { A: visA, I: visI, U: visU, E: visE, O: visO };
 
 const TRIGGERS: { id: TriggerName; label: string; key: string }[] = [
   { id: "greet", label: "Greet / wave", key: "G" },
@@ -22,7 +14,7 @@ const TRIGGERS: { id: TriggerName; label: string; key: string }[] = [
   { id: "think", label: "Thinking", key: "T" },
   { id: "notify", label: "Notification", key: "N" },
   { id: "playful", label: "Wink / playful", key: "P" },
-  { id: "talk", label: "Talk demo", key: "V" },
+  { id: "talk", label: "Talk (ela fala)", key: "Y" },
 ];
 
 const FACE_BY_TRIGGER: Record<TriggerName, FaceParams> = {
@@ -51,13 +43,10 @@ export default function App() {
   const smRef = useRef<CompanionStateMachine | null>(null);
   const rendererRef = useRef<CompanionRenderer | null>(null);
   const followerRef = useRef<FaceFollower | null>(null);
-  const talkingRef = useRef(false);
   const [rendererKind, setRendererKind] = useState<"loading" | "static" | "live2d" | "puppet">("loading");
   const [modelFound, setModelFound] = useState<boolean | null>(null);
   const [rigFound, setRigFound] = useState<boolean | null>(null);
   const [pose, setPose] = useState<PoseName>("neutral");
-  const [talking, setTalking] = useState(false);
-  const [viseme, setViseme] = useState<(typeof VISEMES)[number]>("A");
   const [log, setLog] = useState<string[]>([]);
   const [faceOn, setFaceOn] = useState(false);
   const [brain, setBrain] = useState<BrainStatus | null>(null);
@@ -90,9 +79,7 @@ export default function App() {
       }
     };
     sm.onTalk = (active) => {
-      talkingRef.current = active;
-      setTalking(active);
-      if (active) pushLog("talk demo: viseme preview (art only, not rig mouth motion)");
+      pushLog(active ? "talk: boca rigada a falar (jaw + cavidade + vogais)" : "talk: fim");
     };
 
     (async () => {
@@ -135,15 +122,10 @@ export default function App() {
     const offTriggers = subscribeTriggers((t) => sm.trigger(t));
     const offPointer = subscribePointer((x, y) => renderer?.setGaze(x, y));
 
-    const visemeTimer = window.setInterval(() => {
-      if (talkingRef.current) setViseme((v) => VISEMES[(VISEMES.indexOf(v) + 1) % VISEMES.length]);
-    }, 120);
-
     return () => {
       disposed = true;
       offTriggers();
       offPointer();
-      window.clearInterval(visemeTimer);
       followerRef.current?.stop();
       renderer?.dispose();
     };
@@ -222,9 +204,10 @@ export default function App() {
           <>
             the <b>component puppet</b> is live: eyeballs translate inside clipped eye openings
             around <b>her real on-screen eye axis</b>, lids blink over them, brows move
-            independently, head follows with its own limits. New: webcam face-follow and a
-            local-LLM brain hook (LM Studio) — both on-device, both optional. Mouth/torso
-            components remain later milestones; this is <b>not</b> Live2D/Inochi2D.
+            independently, head follows with its own limits, and the <b>mouth/jaw rig speaks</b>
+            (key <b>Y</b> or the Talk button, and chat replies): jaw drop + clipped oral cavity
+            + gradual teeth/tongue + vowel shapes. Webcam face-follow and the local-LLM brain
+            hook (LM Studio) are on-device and optional. This is <b>not</b> Live2D/Inochi2D.
           </>
         ) : (
           <>static-sprite placeholder (transform-only idle). Not a rig.</>
@@ -235,10 +218,6 @@ export default function App() {
         <section className="stage">
           <canvas ref={canvasRef} />
           <video ref={videoRef} className="pip" muted playsInline hidden={!faceOn} />
-          <div className={`mouth-preview ${talking ? "active" : ""}`}>
-            <img src={VISEME_URL[viseme]} alt={`viseme ${viseme}`} />
-            <div className="cap">viseme {viseme} · art preview</div>
-          </div>
         </section>
 
         <aside className="panel">
